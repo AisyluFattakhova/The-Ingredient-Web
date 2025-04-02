@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ingredient Web Visualization</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="controls">
+    <h1>Ingredient Relationships</h1>
+    <select id="cuisine-select">
+      <option value="Scandinavian">Scandinavian</option>
+    </select>
+    
+  </div>
+  <div id="heb-container"></div>
+  <script>
+    async function loadCuisines() {
+      try {
+        const response = await fetch('/api/cuisines'); // New API to get cuisine list
+        const cuisines = await response.json();
+
+        const select = document.getElementById("cuisine-select");
+        select.innerHTML = '<option value="">Select Cuisine</option>'; // Reset options
+
+        cuisines.forEach(cuisine => {
+          const option = document.createElement("option");
+          option.value = cuisine;
+          option.textContent = cuisine;
+          select.appendChild(option);
+        });
+
+        select.addEventListener("change", (e) => {
+          if (e.target.value) {
+            loadData(e.target.value); // Calls your existing loadData function in heb.js
+          }
+        });
+      } catch (error) {
+        console.error("Error loading cuisines:", error);
+      }
+    }
+
+    loadCuisines();
+  </script>
+  <script src="/static/heb.js"></script>
+</body>
+</html>

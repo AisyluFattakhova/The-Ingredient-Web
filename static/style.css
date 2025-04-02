@@ -1,0 +1,39 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  #controls {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  #cuisine-select {
+    padding: 8px;
+    font-size: 16px;
+  }
+  
+  #heb-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;  /* Prevent scrolling */
+    margin: 0;
+    padding: 0;
+  }
+  
+  #heb-container svg {
+    display: block;  /* Remove extra space below SVG */
+    border: none;
+    outline: none;
+  }
+  .link {
+    fill: none;
+    stroke-opacity: 0.4;
+  }
+  
+  .node text {
+    font-size: 12px;
+    text-shadow: 0 1px 0 white, 1px 0 0 white, -1px 0 0 white, 0 -1px 0 white;
+  }
