@@ -27,7 +27,7 @@ window.addEventListener("resize", function() {
 // Load data and initialize
 async function loadData() {
     try {
-      const response = await fetch(`/api/heb/scandinavian`);
+      const response = await fetch(`/api/heb/russian`);
       const data = await response.json();
       renderVisualization(data);
     } catch (error) {
@@ -39,7 +39,7 @@ function renderVisualization(data) {
   svg.selectAll("*").remove();
 
   // First filter: Remove links with value = 1
-  const filteredLinks = data.links.filter(link => link.value > 1);
+  const filteredLinks = data.links.filter(link => link.value > 2);
 
   // Calculate node degrees based on filtered links
   const nodeDegrees = {};
@@ -74,6 +74,11 @@ function renderVisualization(data) {
     .curve(d3.curveBundle.beta(1))
     .radius(d => d.y)
     .angle(d => d.x * Math.PI / 180);
+    const lineColors = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+        "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5"
+    ];  
 
   // Draw links with adjusted styling
   svg.selectAll(".link")
@@ -89,9 +94,12 @@ function renderVisualization(data) {
       }
       return null;
     })
-    .style("stroke", "#2E86AB")
+    
+        
+        // In your link drawing code:
+    .style("stroke", (d, i) => lineColors[i % lineColors.length])  // Cycle through colors
     .style("fill", "none")
-    .style("stroke-width", d => Math.sqrt(d.value) * 1.2)  // Slightly thicker lines
+    .style("stroke-width", d => Math.sqrt(d.value) * 1.2)
     .style("stroke-opacity", 0.7);
   
   // Draw nodes with improved text positioning
