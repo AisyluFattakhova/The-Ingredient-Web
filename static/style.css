@@ -1,39 +1,89 @@
 body {
-    font-family: Arial, sans-serif;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-  
-  #controls {
-    margin-bottom: 20px;
-    text-align: center;
-  }
-  
-  #cuisine-select {
-    padding: 8px;
-    font-size: 16px;
-  }
-  
-  #heb-container {
-    width: 100%;
-    max-width: 100%;
-    overflow: visible;  /* Prevent scrolling */
-    margin: 0;
-    padding: 0;
-  }
-  
-  #heb-container svg {
-    display: block;  /* Remove extra space below SVG */
-    border: none;
-    outline: none;
-  }
-  .link {
-    fill: none;
-    stroke-opacity: 0.4;
-  }
-  
-  .node text {
-    font-size: 12px;
-    text-shadow: 0 1px 0 white, 1px 0 0 white, -1px 0 0 white, 0 -1px 0 white;
-  }
+  font-family: sans-serif;
+  margin: 20px;
+}
+
+#controls {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#controls h1 {
+    margin-bottom: 10px;
+}
+
+#cuisine-select {
+    padding: 8px 12px;
+    font-size: 1em;
+    min-width: 200px;
+}
+
+#heb-container {
+  position: relative; /* Needed for absolute positioning of loading indicator */
+  width: 100%;
+  max-width: 1000px; /* Control max width if desired */
+  margin: 0 auto; /* Center the container */
+  min-height: 800px; /* Ensure space for visualization */
+  border: 1px solid #eee; /* Optional: visualize container bounds */
+}
+
+/* Link Styles */
+.link {
+  fill: none;
+  stroke-linecap: round; /* Smoother ends */
+  transition: stroke-opacity 0.3s ease, stroke-width 0.3s ease; /* Smooth transitions */
+}
+
+/* Node Styles */
+.node {
+   transition: opacity 0.3s ease; /* Smooth transitions for node groups */
+}
+
+.node circle {
+  /* Fill is set by JS */
+  /* Stroke is set by JS */
+  transition: stroke-width 0.3s ease, stroke 0.3s ease, r 0.3s ease; /* Smooth transitions */
+}
+
+.node text {
+  fill: #333; /* Default text color */
+  paint-order: stroke; /* Make text more readable over lines */
+  stroke: #fff; /* White outline */
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  transition: font-weight 0.3s ease; /* Smooth transitions */
+}
+
+/* Highlight Styles (triggered by JS adding/removing classes or direct style manipulation) */
+/* If using classes (add .classed() in JS): */
+/*
+.link-highlighted {
+  stroke-opacity: 0.9 !important;
+  stroke-width: 3px !important;
+}
+
+.node-highlighted circle {
+  stroke: #000 !important;
+  stroke-width: 2.5px !important;
+  r: 7px !important;
+}
+
+.text-highlighted {
+  font-weight: bold !important;
+  fill: #000 !important;
+} */
+
+/* Styles for loading/error messages (can be text elements in SVG or HTML divs) */
+.loading-indicator,
+.error-message,
+.info-message {
+    /* Styles are set inline in JS for SVG text, adjust if needed */
+    /* If using an HTML div for loading: */
+    /* position: absolute; */
+    /* top: 50%; */
+    /* left: 50%; */
+    /* transform: translate(-50%, -50%); */
+    /* padding: 20px; */
+    /* background: rgba(255, 255, 255, 0.8); */
+    /* border-radius: 5px; */
+}

@@ -9,19 +9,29 @@
   <div id="controls">
     <h1>Ingredient Relationships</h1>
     <select id="cuisine-select">
-      <option value="Scandinavian">Scandinavian</option>
+      <!-- Options will be populated by loadCuisines -->
+      <option value="">Loading cuisines...</option>
     </select>
-    
   </div>
-  <div id="heb-container"></div>
+  <div id="heb-container">
+    <!-- SVG will be appended here by heb.js -->
+    <!-- Optional: Add a dedicated loading indicator div if preferred over the JS one -->
+    <!-- <div class="loading-indicator" style="display: none;">Loading...</div> -->
+  </div>
+
   <script>
+    // This script runs first to populate the dropdown
     async function loadCuisines() {
+      const select = document.getElementById("cuisine-select");
       try {
-        const response = await fetch('/api/cuisines'); // New API to get cuisine list
+        const response = await fetch('/api/cuisines'); // API to get cuisine list
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const cuisines = await response.json();
 
-        const select = document.getElementById("cuisine-select");
-        select.innerHTML = '<option value="">Select Cuisine</option>'; // Reset options
+        select.innerHTML = '<option value="">Select Cuisine</option>'; // Reset options with placeholder
+
+        // Sort cuisines alphabetically for user convenience
+        cuisines.sort();
 
         cuisines.forEach(cuisine => {
           const option = document.createElement("option");
@@ -30,18 +40,23 @@
           select.appendChild(option);
         });
 
-        select.addEventListener("change", (e) => {
-          if (e.target.value) {
-            loadData(e.target.value); // Calls your existing loadData function in heb.js
-          }
-        });
+        // Note: The event listener that calls loadData is now set up
+        // inside heb.js within the DOMContentLoaded wrapper.
+        // No need to add it here anymore.
+
       } catch (error) {
         console.error("Error loading cuisines:", error);
+        select.innerHTML = '<option value="">Error loading cuisines</option>';
+        // Optionally display an error message elsewhere too
       }
     }
 
+    // Load the list of cuisines when the page loads
     loadCuisines();
   </script>
+
+  <!-- Load the main visualization script AFTER the dropdown might be populated -->
   <script src="/static/heb.js"></script>
+
 </body>
 </html>
