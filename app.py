@@ -85,10 +85,10 @@ def get_heb(cuisine):
         ]
         
         # Check if the link structure is as expected
-        # if data["links"] and "cuisine" not in data["links"][0]:
-        #    print("Warning: Links in heb_data.json do not seem to have a 'cuisine' field.")
-            # Decide how to handle this - maybe all links belong to all cuisines? Or filtering is impossible?
-            # For now, we return only links matching the 'cuisine' field if it exists.
+        if data["links"] and "cuisine" not in data["links"][0]:
+           print("Warning: Links in heb_data.json do not seem to have a 'cuisine' field.")
+        #     Decide how to handle this - maybe all links belong to all cuisines? Or filtering is impossible?
+        #     For now, we return only links matching the 'cuisine' field if it exists.
 
 
         return jsonify({
@@ -101,6 +101,7 @@ def get_heb(cuisine):
         print(f"Error in /api/heb/{cuisine}: {e}") # Log error server-side
         # Be careful about sending raw exception messages to the client in production
         return jsonify({"error": f"An internal error occurred: {e}"}), 500
+    
 
 # --- Keep your main execution block ---
 if __name__ == '__main__':
@@ -131,5 +132,5 @@ if __name__ == '__main__':
     print(f"Templates folder: {app.template_folder}")
     print(f"Static folder: {app.static_folder}")
     print("Starting Flask server...")
-    # Use host='0.0.0.0' to make it accessible from other devices on the network
+    print("🌐 Flask is accessible on http://localhost:5000 🚀")
     app.run(debug=True, port=5000, host='0.0.0.0')

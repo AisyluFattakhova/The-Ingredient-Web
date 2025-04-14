@@ -1,0 +1,9 @@
+Flask==2.0.1
+Werkzeug==2.0.1
+matplotlib==3.5.3
+numpy==1.23.0
+pandas==1.4.3
+plotly==5.11.0
+requests
+bs4
+wordcloud
