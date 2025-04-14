@@ -24,8 +24,4 @@ This project aims to create an interactive **hierarchical edge bundling (HEB)** 
 - **Data Processing:** Pandas, Matplotlib
 - **API:** Flask RESTful API  
 - **Visualization:** D3.js (JavaScript)  
-
----
-
-**Contributors:**  
-Azalia Alisheva, Aisylu Fattakhova  
+  
