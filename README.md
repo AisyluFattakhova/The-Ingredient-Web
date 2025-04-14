@@ -16,8 +16,7 @@ This project aims to create an interactive **hierarchical edge bundling (HEB)** 
 - **Source:** [AllRecipes.com](https://www.allrecipes.com)
 - **Method:** Web scraping using BeautifilSoup
 - **Data Includes:**  
-  - List of ingredients  
-  - Recipe category  
+  - List of ingredients   
   - Cuisine type  
 
 ## Technology Stack
@@ -25,8 +24,4 @@ This project aims to create an interactive **hierarchical edge bundling (HEB)** 
 - **Data Processing:** Pandas, Matplotlib
 - **API:** Flask RESTful API  
 - **Visualization:** D3.js (JavaScript)  
-
----
-
-**Contributors:**  
-Azalia Alisheva, Aisylu Fattakhova  
+  
