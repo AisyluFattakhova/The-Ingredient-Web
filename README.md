@@ -69,7 +69,7 @@ cd The-Ingredient-Web
 docker-compose up --build
 ```
 
-4. Access the app at: [http://localhost:8080](http://localhost:8080)
+4. Access the app at: [http://localhost:5000](http://172.18.0.2:5000/)
 
 ---
 
