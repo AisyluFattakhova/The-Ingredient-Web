@@ -1,15 +1,11 @@
 # 🥘 The Ingredient Web  
-**An interactive hierarchical edge bundling visualization that explores the relationships between ingredients used in recipes.**
-
-**License:** MIT  
-**Python 3.9+**  
-**D3.js 7.8+**
-
+## An interactive hierarchical edge bundling visualization that explores the relationships between ingredients used in recipes
 ---
 
 ## 📌 Table of Contents  
 - 🚀 [Project Overview](#project-overview)  
 - 🛠️ [Used Technologies](#used-technologies)  
+- 🔍 [Data Collection](#data-collection) 
 - ⚡ [Deployment](#deployment)  
 - 🗺️ [Roadmap](#roadmap)   
 - 👥 [Authors](#authors)  
@@ -39,16 +35,31 @@
 
 | Technology | Role |
 |-----------|------|
-| Python | App logic, data parsing |
-| Jupyter (IPython) | Preprocessing and exploration |
-| JSON | Lightweight storage of ingredient networks |
+| Python | App logic and data scraping |
+| BeautifulSoup | Web scraping |
+| Pandas | Data processing and transformation |
+| Matplotlib | Ingredient pair frequency visualization |
+| Flask (RESTful) | API for serving data to frontend |
+
+---
 
 ### 🎨 Frontend & Visualization
 
 | Technology | Role |
 |-----------|------|
-| D3.js | Hierarchical edge bundling and interactivity |
-| HTML/CSS/JS | Base for frontend display (if included) |
+| D3.js | Hierarchical edge bundling and graph visualization |
+| HTML/CSS/JavaScript | UI layout and interactivity |
+
+
+---
+
+## 🔍 Data Collection
+
+- **Source**: [AllRecipes.com](https://www.allrecipes.com)
+- **Method**: Web scraping using `BeautifulSoup`
+- **Collected Data**:
+  - Ingredient lists
+  - Cuisine type classification
 
 ---
 
@@ -77,10 +88,10 @@ docker-compose up --build
 
 | Phase | Status | Tasks |
 |-------|--------|-------|
-| Data Collection | ✅ | Parse and clean recipe ingredient data |
-| Visualization | ✅ | Implement edge bundling with D3.js |
-| UI Polish | 🟡 | Improve styling and filtering |
-| Interactivity | 🟠 | Tooltips, zoom, and ingredient search |
+Data Collection | ✅ | Scrape and clean recipe ingredient data
+Visualization | ✅ | Implement edge bundling and charts
+UI Polish | 🟡 | Add filters, search, and responsive design
+Interactivity | 🟠 | Improve user engagement and highlight features
 
 ---
 
