@@ -59,7 +59,7 @@
 1. Clone the repo:
 
 ```
-git clone https://github.com/your-username/The-Ingredient-Web.git
+git clone https://github.com/Data-Wrangling-and-Visualisation/The-Ingredient-Web.git
 cd The-Ingredient-Web
 ```
 
