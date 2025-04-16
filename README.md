@@ -3,13 +3,13 @@
 ---
 
 ## 📌 Table of Contents  
-- 🚀 [Project Overview](#project-overview)  
-- 🛠️ [Used Technologies](#used-technologies)  
-- 🔍 [Data Collection](#data-collection) 
-- ⚡ [Deployment](#deployment)  
-- 🗺️ [Roadmap](#roadmap)   
-- 👥 [Authors](#authors)  
-- 📜 [License](#license)  
+- 🚀 [Project Overview](#-project-overview)  
+- 🛠️ [Used Technologies](#%EF%B8%8F-used-technologies)  
+- 🔍 [Data Collection](#-data-collection) 
+- ⚡ [Deployment](#-deployment)  
+- 🗺️ [Roadmap](#%EF%B8%8F-roadmap)   
+- 👥 [Authors](#-authors)  
+- 📜 [License](#-license)  
 
 ---
 
