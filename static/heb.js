@@ -1,435 +1,888 @@
-// Wait for the DOM to be fully loaded before running D3 code
+/**
+ * /static/main_viz.js
+ * Main D3.js script for ingredient visualization dashboard.
+ */
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM Loaded. Initializing Visualization...");
 
-  // --- Configuration ---
-  const container = d3.select("#heb-container");
-  const controls = d3.select("#controls"); // Select controls div for title updates
-  const height = 1000;  // Fixed height
-  const defaultRadiusMargin = 80; // Margin from edge
-  const color = d3.scaleOrdinal(d3.schemeCategory10); // Color scale for nodes (maybe based on category later?)
-  const lineColors = [ // Colors for links
-      "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-      "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
-      "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5"
-  ];
+    // --- Configuration ---
+    const container = d3.select("#chart-container");
+    const controls = d3.select("#controls");
+    const chartButtonsContainer = d3.select("#chart-buttons");
+    const searchInput = d3.select("#search-input");
+    const clearHighlightButton = d3.select("#clear-highlight-button");
+    const vizHeight = 650; // Height for the SVG container
+    const defaultRadiusMargin = 80; // For HEB layout
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10); // General color scale
+    const lineColors = [ // Specific colors for HEB links
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+        "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5"
+    ];
+    // Margins for different bar charts
+    const barChartMargin = { top: 30, right: 30, bottom: 120, left: 180 };
+    const pairBarChartMargin = { top: 30, right: 30, bottom: 120, left: 200 };
 
-  // --- State Variables ---
-  let currentWidth = container.node().getBoundingClientRect().width;
-  let radius = calculateRadius(currentWidth);
-  let currentCuisineData = null; // To store data for resize re-render
+    // --- State Variables ---
+    let currentWidth = container.node()?.getBoundingClientRect().width || 800;
+    let currentCuisineData = null; // Stores raw data { hierarchy: ..., links: ... }
+    let currentChartType = 'heb'; // Active chart: 'heb', 'network', 'bar', 'pairs-bar'
+    let radius, barChartWidth, barChartHeight, pairBarChartWidth, pairBarChartHeight, networkWidth, networkHeight; // Chart dimensions
+    let forceSimulation = null; // Holds the network simulation object
 
-  // --- SVG Setup (Create SVG and main group ONCE) ---
-  const svg = container
-    .append("svg")
-    .attr("width", "100%")
-    .attr("height", height)
-    .style("background", "transparent");
+    // --- SVG Setup ---
+    const svg = container
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", vizHeight)
+        .style("background", "transparent");
 
-  const g = svg.append("g"); // The main group for transformations
+    // Create dedicated groups for each chart type
+    const g = svg.append("g").attr("class", "heb-group");
+    const barG = svg.append("g").attr("class", "bar-group");
+    const pairBarG = svg.append("g").attr("class", "pair-bar-group");
+    const netG = svg.append("g").attr("class", "network-group");
 
-  // --- D3 Layout Helpers ---
-  const line = d3.lineRadial()
-    .curve(d3.curveBundle.beta(0.95)) // Adjust beta for curve tightness (0 is straight, 1 is very curvy)
-    .radius(d => d.y)
-    .angle(d => d.x * Math.PI / 180);
+    // --- D3 Layout Helpers ---
+    const lineRadial = d3.lineRadial() // For HEB links
+        .curve(d3.curveBundle.beta(0.95))
+        .radius(d => d.y)
+        .angle(d => d.x * Math.PI / 180);
 
-  // --- Core Functions ---
+    // --- Core Functions ---
 
-  function calculateRadius(width) {
-      return Math.max(150, Math.min(width, height) / 2 - defaultRadiusMargin); // Ensure a minimum radius
-  }
+    function calculateRadius(width) {
+        return Math.max(150, Math.min(width, vizHeight) / 2 - defaultRadiusMargin);
+    }
 
-  function updateSvgTransform() {
-      currentWidth = container.node().getBoundingClientRect().width;
-      radius = calculateRadius(currentWidth); // Recalculate radius on resize
-      svg.attr("width", currentWidth); // Update SVG width attribute if needed
-      g.attr("transform", `translate(${currentWidth / 2},${height / 2})`);
-  }
+    // Updates dimensions, transforms, and visibility based on current chart type and window size
+    function updateSvgDimensions() {
+        currentWidth = container.node()?.getBoundingClientRect().width || 800;
+        svg.attr("width", currentWidth).attr("height", vizHeight);
 
-  // Initialize SVG transform
-  updateSvgTransform();
+        // Calculate dimensions for each chart type
+        radius = calculateRadius(currentWidth);
+        barChartWidth = Math.max(200, currentWidth - barChartMargin.left - barChartMargin.right);
+        barChartHeight = Math.max(150, vizHeight - barChartMargin.top - barChartMargin.bottom);
+        pairBarChartWidth = Math.max(200, currentWidth - pairBarChartMargin.left - pairBarChartMargin.right);
+        pairBarChartHeight = Math.max(150, vizHeight - pairBarChartMargin.top - pairBarChartMargin.bottom);
+        networkWidth = currentWidth;
+        networkHeight = vizHeight;
 
-  async function loadData(cuisineName) {
-      if (!cuisineName) {
-          clearVisualization("Select a cuisine from the list.");
-          updateTitle("Ingredient Relationships");
-          return;
-      }
+        // Apply transforms and manage visibility for each group
+        g.attr("transform", `translate(${currentWidth / 2},${vizHeight / 2})`)
+         .style("display", currentChartType === 'heb' ? "block" : "none");
 
-      setLoadingState(true, cuisineName); // Show loading state
+        barG.attr("transform", `translate(${barChartMargin.left},${barChartMargin.top})`)
+            .style("display", currentChartType === 'bar' ? "block" : "none");
 
-      try {
-          const response = await fetch(`/api/heb/${cuisineName}`);
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status} for ${cuisineName}`);
-          }
-          const data = await response.json();
+        pairBarG.attr("transform", `translate(${pairBarChartMargin.left},${pairBarChartMargin.top})`)
+               .style("display", currentChartType === 'pairs-bar' ? "block" : "none");
 
-          if (!data || !data.hierarchy || !data.links) {
-               throw new Error(`Incomplete data received for ${cuisineName}`);
-          }
+        netG.attr("transform", null) // Network often uses origin 0,0 or specific centering
+            .style("display", currentChartType === 'network' ? "block" : "none");
 
-          currentCuisineData = data; // Store for potential resize re-render
-          updateTitle(`Ingredient Relationships - ${cuisineName}`);
-          renderVisualization(data);
+        // Update network simulation center if it exists
+        if (forceSimulation) {
+            forceSimulation.force("center", d3.forceCenter(networkWidth / 2, networkHeight / 2));
+            // forceSimulation.alpha(0.1).restart(); // Optional: reheat simulation slightly
+        }
+    }
 
-      } catch (error) {
-          console.error(`Error loading data for ${cuisineName}:`, error);
-          displayErrorMessage(`Failed to load data for ${cuisineName}. Please try another cuisine or check the console.`);
-          currentCuisineData = null; // Clear data on error
-      } finally {
-          setLoadingState(false); // Hide loading state
-      }
-  }
+    // Fetches data for the selected cuisine
+    async function loadData(cuisineName) {
+        if (!cuisineName) {
+            clearVisualization("Select a cuisine from the list.");
+            updateTitle("Ingredient Relationships");
+            currentCuisineData = null;
+            return;
+        }
 
-  function renderVisualization(data) {
-      g.selectAll("*").remove(); // Clear previous visualization content from the group
+        setLoadingState(true, cuisineName); // Show loading indicator
+        currentCuisineData = null; // Clear previous data
+        if (forceSimulation) { forceSimulation.stop(); forceSimulation = null; } // Stop network sim
+        clearHighlight(); // Clear search
 
-      // --- Filtering ---
-      // Filter 1: Remove weak links (value <= 2)
-      const filteredLinks = data.links.filter(link => link.value > 2);
-      if (filteredLinks.length === 0) {
-          displayInfoMessage("No ingredient connections strong enough to display for this cuisine.");
-          return;
-      }
+        try {
+            const response = await fetch(`/api/heb/${cuisineName}`); // Fetch data from API
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
 
-      // Calculate node degrees based on *filtered* links
-      const nodeDegrees = {};
-      const nodesInFilteredLinks = new Set();
-      filteredLinks.forEach(link => {
-          nodeDegrees[link.source] = (nodeDegrees[link.source] || 0) + 1;
-          nodeDegrees[link.target] = (nodeDegrees[link.target] || 0) + 1;
-          nodesInFilteredLinks.add(link.source);
-          nodesInFilteredLinks.add(link.target);
-      });
+            // Validate data structure needed for ALL charts
+            if (!data || !data.hierarchy || !data.hierarchy.children || !data.links) {
+                console.error("Incomplete data received:", data);
+                throw new Error(`Incomplete data for ${cuisineName}. Requires hierarchy with children and links.`);
+            }
 
-      // Filter 2: Remove nodes with degree <= 1 (only connected by one weak link or orphans)
-      // We also need the original hierarchy to map names back
-      const filteredHierarchy = filterHierarchy(data.hierarchy, node => nodeDegrees[node.name] > 1 && nodesInFilteredLinks.has(node.name));
+            currentCuisineData = data; // Store raw data
+            updateTitle(`${cuisineName} - Ingredient Analysis`);
+            renderCurrentChart(); // Render the active chart type
 
-      if (!filteredHierarchy || !filteredHierarchy.children || filteredHierarchy.children.length === 0) {
-          displayInfoMessage("No significant ingredient clusters found after filtering.");
-          return;
-      }
+        } catch (error) {
+            console.error(`Error loading data for ${cuisineName}:`, error);
+            displayErrorMessage(`Failed to load data for ${cuisineName}.`);
+            currentCuisineData = null;
+        } finally {
+            setLoadingState(false); // Hide loading indicator
+        }
+    }
 
-      // Filter 3: Final link filter: only include links where BOTH source and target survived the node filter
-      const finalLinks = filteredLinks.filter(link =>
-          nodeDegrees[link.source] > 1 && nodeDegrees[link.target] > 1
-      );
+    // --- Data Processing Functions ---
 
-      if (finalLinks.length === 0) {
-           displayInfoMessage("No connections remain after filtering ingredients.");
-           return;
-      }
+    // Processes data for HEB (Filters based on link strength & node degree)
+    function processDataForHEB(rawData) {
+        console.log("Processing data for HEB...");
+        if (!rawData?.links || !rawData?.hierarchy) return null; // Basic check
 
+        const filteredLinks = rawData.links.filter(link => link.value > 2);
+        if (filteredLinks.length === 0) return { error: "No strong ingredient connections (value > 2)." };
 
-      // --- D3 Hierarchy & Layout ---
-      const root = d3.hierarchy(filteredHierarchy)
-        .sum(d => d.value || 1) // Use value if present, otherwise count as 1
-        .sort((a, b) => d3.ascending(a.data.name, b.data.name)); // Sort leaves alphabetically
+        const nodeDegrees = {};
+        const nodesInFilteredLinks = new Set();
+        filteredLinks.forEach(link => {
+            nodeDegrees[link.source] = (nodeDegrees[link.source] || 0) + 1;
+            nodeDegrees[link.target] = (nodeDegrees[link.target] || 0) + 1;
+            nodesInFilteredLinks.add(link.source);
+            nodesInFilteredLinks.add(link.target);
+        });
 
-      // Create cluster layout using the dynamic radius
-      const cluster = d3.cluster().size([360, radius]);
-      cluster(root);
+        const filteredHierarchy = filterHierarchy(rawData.hierarchy, node => {
+            // Keep leaf node only if its degree > 1 (based on strong links)
+            if (!node.children) return nodesInFilteredLinks.has(node.name) && nodeDegrees[node.name] > 1;
+            return true; // Keep internal nodes initially
+        });
 
-      // Store leaf node positions efficiently
-      const nodeMap = new Map();
-      root.leaves().forEach(d => nodeMap.set(d.data.name, d));
+        if (!filteredHierarchy?.children?.length) return { error: "No significant ingredient clusters found after filtering." };
 
-      // Check if nodes needed for links exist in the map (debugging step)
-      finalLinks.forEach(link => {
-          if (!nodeMap.has(link.source)) console.warn(`Source node missing in map: ${link.source}`);
-          if (!nodeMap.has(link.target)) console.warn(`Target node missing in map: ${link.target}`);
-      });
+        const survivingLeafNodeNames = new Set();
+        function collectLeafNames(node) {
+            if (!node.children && node.name) survivingLeafNodeNames.add(node.name);
+            if (node.children) node.children.forEach(collectLeafNames);
+        }
+        collectLeafNames(filteredHierarchy);
 
+        const finalLinks = filteredLinks.filter(link =>
+            survivingLeafNodeNames.has(link.source) && survivingLeafNodeNames.has(link.target)
+        );
 
-      // --- Draw Links ---
-      g.selectAll(".link")
-        .data(finalLinks)
-        .enter().append("path")
-        .attr("class", "link")
-        .attr("d", d => {
-          const source = nodeMap.get(d.source);
-          const target = nodeMap.get(d.target);
-          // Ensure both nodes exist after filtering before drawing link
-          if (source && target) {
-            // Use control points for smoother bundling if needed, or just source/target for basic bundle
-            // For HEB, d3.lineRadial expects an array of points [start, end] or [start, control1, ..., controlN, end]
-            // For simple bundling, just source and target works with curveBundle
-             return line([source, target]);
-          }
-          return null; // Don't draw if a node is missing
+        if (finalLinks.length === 0) return { error: "No connections remain between filtered ingredients." };
+
+        const root = d3.hierarchy(filteredHierarchy).sum(d => d.value || 1).sort((a, b) => d3.ascending(a.data.name, b.data.name));
+        const cluster = d3.cluster().size([360, radius])(root); // Apply cluster layout
+
+        const nodeMap = new Map(root.leaves().map(d => [d.data.name, d])); // Map names to D3 nodes
+
+        console.log(`HEB Processed: ${nodeMap.size} nodes, ${finalLinks.length} links.`);
+        return { root, finalLinks, nodeMap };
+    }
+
+    // Processes data for Top Ingredients Bar Chart (Occurrences)
+    function processDataForBarChart(rawData, topN = 20) {
+        console.log("Processing data for Top Ingredients Bar Chart...");
+        if (!rawData?.hierarchy?.children) return null;
+
+        const ingredients = rawData.hierarchy.children;
+        const validIngredients = ingredients
+            .filter(item => item?.name && typeof item.value === 'number' && item.value >= 0)
+            .map(item => ({ name: item.name, value: item.value }));
+
+        if (validIngredients.length === 0) return { error: "No valid ingredient occurrence data found." };
+
+        const sortedNodes = validIngredients.sort((a, b) => b.value - a.value).slice(0, topN);
+
+        if (sortedNodes.length === 0) return { error: "No ingredients after sorting/filtering." };
+
+        console.log(`Top Ingredients Bar Processed: ${sortedNodes.length} nodes.`);
+        return { sortedNodes };
+    }
+
+    // Processes data for Network Graph
+    function processDataForNetwork(rawData) {
+        console.log("Processing data for Network Graph...");
+        if (!rawData?.links || !rawData?.hierarchy) return null;
+
+        const nodeSet = new Set();
+        rawData.links.forEach(link => { nodeSet.add(link.source); nodeSet.add(link.target); });
+        const nodes = Array.from(nodeSet).map(name => ({ id: name })); // Nodes need 'id'
+
+        // Map links to use 'id' if needed by forceLink, ensure value exists
+        const links = rawData.links.map(link => ({
+            source: link.source, target: link.target, value: link.value || 1
+        }));
+
+        if (nodes.length === 0) return { error: "No nodes found for network." };
+        console.log(`Network Processed: ${nodes.length} nodes, ${links.length} links.`);
+        return { nodes, links };
+    }
+
+    // Processes data for Top Pairs Bar Chart
+     function processDataForPairsBarChart(rawData, topN = 20) {
+        console.log("Processing data for Top Pairs Bar Chart...");
+        if (!rawData?.links) return null;
+
+        if (rawData.links.length === 0) return { error: "No links (pairs) available." };
+
+        const sortedLinks = [...rawData.links]
+             .filter(link => link.value > 0)
+            .sort((a, b) => b.value - a.value) // Sort descending by co-occurrence value
+            .slice(0, topN);
+
+        const chartData = sortedLinks.map(link => ({
+            pairLabel: [link.source, link.target].sort().join(' & '), // Consistent label
+            value: link.value,
+            source: link.source, // Keep original for potential interaction
+            target: link.target
+        }));
+
+         if (chartData.length === 0) return { error: "No pairs found after sorting/filtering." };
+
+        console.log(`Top Pairs Bar Processed: ${chartData.length} pairs.`);
+        return { sortedPairs: chartData };
+    }
+
+    // --- Chart Rendering Functions ---
+
+    // Dispatcher: decides which chart to render based on state
+    function renderCurrentChart() {
+        console.log(`renderCurrentChart called. Type: ${currentChartType}, Data loaded: ${!!currentCuisineData}`);
+        if (!currentCuisineData) {
+            const selectValue = document.getElementById("cuisine-select")?.value;
+            clearVisualization(selectValue ? "" : "Select a cuisine to begin.");
+             if (selectValue) console.warn("renderCurrentChart: No data available.");
+            updateSvgDimensions(); // Ensure correct groups hidden/shown
+            return;
+        }
+
+        // Clear previous drawings & ensure correct layout/visibility for the target chart
+        clearVisualization();
+        updateSvgDimensions();
+
+        try {
+            let processed = null;
+            let renderFunction = null;
+            let requiredDataCheck = () => true; // Default check
+
+            // Configure based on chart type
+            switch (currentChartType) {
+                case 'heb':
+                    requiredDataCheck = () => !!currentCuisineData.links && !!currentCuisineData.hierarchy;
+                    if (!requiredDataCheck()) { displayErrorMessage("Links & hierarchy needed for HEB."); return; }
+                    processed = processDataForHEB(currentCuisineData);
+                    renderFunction = renderHEB;
+                    break;
+                case 'bar':
+                    requiredDataCheck = () => !!currentCuisineData.hierarchy?.children;
+                    if (!requiredDataCheck()) { displayErrorMessage("Ingredient data needed for Top Ingredients chart."); return; }
+                    processed = processDataForBarChart(currentCuisineData);
+                    renderFunction = renderBarChart;
+                    break;
+                case 'network':
+                     requiredDataCheck = () => !!currentCuisineData.links && !!currentCuisineData.hierarchy;
+                     if (!requiredDataCheck()) { displayErrorMessage("Links & hierarchy needed for Network."); return; }
+                    processed = processDataForNetwork(currentCuisineData);
+                    renderFunction = renderNetwork;
+                    break;
+                case 'pairs-bar':
+                    requiredDataCheck = () => !!currentCuisineData.links;
+                     if (!requiredDataCheck()) { displayErrorMessage("Links data needed for Top Pairs chart."); return; }
+                    processed = processDataForPairsBarChart(currentCuisineData);
+                    renderFunction = renderPairsBarChart;
+                    break;
+                default:
+                    console.error(`Unknown chart type: ${currentChartType}`);
+                    displayErrorMessage(`Unknown chart type selected.`);
+                    return;
+            }
+
+            // Render or show message
+            if (processed?.error) {
+                displayInfoMessage(processed.error);
+            } else if (processed && renderFunction) {
+                renderFunction(processed); // Call the specific render function
+                 // Apply search highlight if search term exists AFTER rendering
+                 const currentSearchTerm = searchInput.node().value;
+                 if (currentSearchTerm) {
+                     highlightNodes(currentSearchTerm);
+                 }
+            } else {
+                // This case handles if processing returns null (e.g., invalid input data)
+                displayErrorMessage(`Could not process data for ${currentChartType} chart.`);
+            }
+
+        } catch (error) {
+            console.error(`Error rendering ${currentChartType} chart:`, error);
+            displayErrorMessage(`An error occurred drawing the chart.`);
+        }
+    }
+
+    // Renders HEB Chart
+        // Renders HEB Chart
+        function renderHEB({ root, finalLinks, nodeMap }) {
+            console.log("Rendering HEB chart...");
+            // Clearing and visibility handled by renderCurrentChart/updateSvgDimensions
+    
+            if (!root || !finalLinks || !nodeMap || nodeMap.size === 0) {
+                 displayInfoMessage("Not enough data for HEB view after filtering."); return;
+            }
+    
+             let linksToDraw = finalLinks.filter(link => nodeMap.has(link.source) && nodeMap.has(link.target));
+             if(linksToDraw.length !== finalLinks.length) console.warn("Some HEB links dropped due to missing nodes in map.");
+    
+            // Draw Links
+            const linkSelection = g.selectAll(".link") // Capture the selection
+                .data(linksToDraw).enter().append("path").attr("class", "link")
+                .attr("d", d => lineRadial([nodeMap.get(d.source), nodeMap.get(d.target)]))
+                .style("stroke", (d, i) => lineColors[i % lineColors.length])
+                .style("fill", "none")
+                .style("stroke-width", d => Math.min(8, Math.max(1, Math.sqrt(d.value))))
+                .style("stroke-opacity", 0.6);
+    
+            // Draw Nodes
+            const nodeSelection = g.selectAll(".node") // Capture the selection
+                .data(root.leaves()).enter().append("g").attr("class", "node")
+                .attr("transform", d => `rotate(${d.x - 90}) translate(${d.y},0)`)
+                .style("cursor", "pointer");
+    
+            nodeSelection.append("circle").attr("r", 5)
+                .style("fill", d => colorScale(d.parent.data.name))
+                .style("stroke", "#333").style("stroke-width", 1);
+            nodeSelection.append("text").attr("dy", "0.31em")
+                .attr("x", d => d.x < 180 ? 8 : -8).style("text-anchor", d => d.x < 180 ? "start" : "end")
+                .attr("transform", d => d.x < 180 ? null : "rotate(180)")
+                .text(d => d.data.name);
+    
+            // *******************************************
+            // ***** ADD THIS LINE BACK / ENSURE IT EXISTS *****
+            setupHEBInteractivity(linkSelection, nodeSelection);
+            // *******************************************
+    
+            console.log("HEB chart rendered.");
+        }
+
+    // Renders Top Ingredients (Occurrence) Bar Chart
+        // Renders Top Ingredients (Occurrence) Bar Chart
+        function renderBarChart({ sortedNodes }) {
+            console.log("Rendering Top Ingredients Bar chart...");
+            barG.selectAll("*").remove(); // Clear only Bar group
+    
+            if (!sortedNodes?.length) { displayInfoMessage("No ingredient data."); return; }
+    
+            // Scales (Keep as is)
+            const maxValue = d3.max(sortedNodes, d => d.value);
+            const xScale = d3.scaleLinear().domain([0, maxValue > 0 ? maxValue : 1]).range([0, barChartWidth]).nice();
+            const yScale = d3.scaleBand().domain(sortedNodes.map(d => d.name)).range([0, barChartHeight]).padding(0.15);
+    
+            // Axes (Keep as is)
+            const xAxis = d3.axisBottom(xScale).ticks(Math.min(10, barChartWidth / 60)).tickFormat(d3.format(maxValue >= 1000 ? "~s" : ",.0f"));
+            const yAxis = d3.axisLeft(yScale);
+    
+            // Draw Axes (Keep as is)
+            barG.append("g").attr("class", "x axis").attr("transform", `translate(0,${barChartHeight})`).call(xAxis)
+                .selectAll("text").style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-65)");
+            barG.append("g").attr("class", "y axis").call(yAxis);
+    
+            // --- Axis Labels (USING POSITIONING FROM PAIRS CHART) ---
+            // X Axis Label
+            barG.append("text").attr("class", "axis-label x-axis-title")
+                .attr("text-anchor", "middle")
+                .attr("x", barChartWidth / 2)
+                // Use the same relative positioning as pairs chart
+                .attr("y", barChartHeight + barChartMargin.bottom * 0.6) // Position below axis
+                .text("Number of Occurrences"); // Keep the correct text
+    
+            // Y Axis Label
+            barG.append("text").attr("class", "axis-label y-axis-title")
+                .attr("text-anchor", "middle")
+                // Use the same transform as pairs chart
+                .attr("transform", `translate(${-barChartMargin.left / 1.3}, ${barChartHeight / 2}) rotate(-90)`)
+                .text("Ingredient"); // Keep the correct text
+            // --- End Axis Labels ---
+    
+            // Draw Bars (Keep as is)
+            const barColorInterpolator = d3.interpolateBlues;
+            const bars = barG.selectAll(".bar").data(sortedNodes).enter().append("rect").attr("class", "bar")
+                .attr("y", d => yScale(d.name)).attr("height", yScale.bandwidth()).attr("x", 0)
+                .attr("fill", (d, i) => barColorInterpolator(0.8 - (i / (sortedNodes.length * 1.5))))
+                .attr("width", 0);
+            bars.transition().duration(750).delay((d, i) => i * 25).attr("width", d => Math.max(0, xScale(d.value)));
+            bars.append("title").text(d => `${d.name}: ${d.value.toLocaleString()} occurrences`);
+    
+            console.log("Top Ingredients Bar chart rendered.");
+        }
+
+    // Renders Network Graph
+        // Renders Network Graph with adjusted forces
+            // Renders Network Graph with STRONGER repulsion and collision
+    function renderNetwork({ nodes, links }) {
+        console.log("Rendering Network Graph (Attempting stronger separation)...");
+        netG.selectAll("*").remove();
+
+        if (!nodes?.length) { displayInfoMessage("No ingredient nodes for network."); return; }
+
+        const link = netG.append("g").attr("class", "network-links")
+            .selectAll("line").data(links).join("line")
+            .attr("class", "network-link")
+            .attr("stroke-width", d => Math.max(1, Math.sqrt(d.value || 1) / 2));
+
+        const nodeRadius = 8; // Maybe slightly larger nodes help visualize collision
+        const node = netG.append("g").attr("class", "network-nodes")
+            .selectAll("g").data(nodes).join("g")
+            .attr("class", "network-node").style("cursor", "grab");
+
+        node.append("circle").attr("r", nodeRadius)
+            .attr("fill", (d, i) => colorScale(i % 10));
+        node.append("text").text(d => d.id).attr("x", nodeRadius + 3).attr("y", 3);
+        node.append("title").text(d => d.id);
+
+        // --- Force Simulation Setup (STRONGER REPULSION/COLLISION) ---
+        if (forceSimulation) forceSimulation.stop();
+
+        forceSimulation = d3.forceSimulation(nodes)
+            // Link force: Keep distance moderate, don't make it too strong initially
+            .force("link", d3.forceLink(links)
+                .id(d => d.id)
+                .distance(60) // Moderate distance (try 50-80)
+                .strength(0.5) // Moderate strength (try 0.4-0.7)
+            )
+            // Charge force: **SIGNIFICANTLY INCREASE** repulsion
+            .force("charge", d3.forceManyBody()
+                .strength(-400) // **MUCH STRONGER** repulsion (try -300 to -800)
+                .distanceMax(networkWidth / 2) // Limit repulsion range to avoid edge effects
+            )
+            // Collision force: Ensure it's strong enough
+            .force("collide", d3.forceCollide()
+                .radius(nodeRadius + 3) // **Increase padding slightly**
+                .strength(0.9) // **Make collision strong** (try 0.7-1.0)
+            )
+            // Center force: Keep this relatively weak compared to repulsion
+            .force("center", d3.forceCenter(networkWidth / 2, networkHeight / 2)
+                // .strength(0.05) // You can explicitly set center strength if needed (default is usually okay)
+                )
+            .on("tick", ticked);
+
+        node.call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended));
+
+        // --- Simulation Tick/Drag Functions (Keep bounds checking in ticked) ---
+        function ticked() {
+            link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+            node.attr("transform", d => `translate(${
+                Math.max(nodeRadius, Math.min(networkWidth - nodeRadius, d.x)) // Keep X within bounds
+            }, ${
+                Math.max(nodeRadius, Math.min(networkHeight - nodeRadius, d.y)) // Keep Y within bounds
+            })`);
+        }
+        // Keep dragstarted, dragged, dragended the same as before
+        function dragstarted(event, d) { if (!event.active) forceSimulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; d3.select(this).raise().style("cursor", "grabbing"); }
+        function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+        function dragended(event, d) { if (!event.active) forceSimulation.alphaTarget(0); d.fx = null; d.fy = null; d3.select(this).style("cursor", "grab"); }
+
+        console.log("Network Graph Rendered with stronger separation forces.");
+    }
+
+    // Renders Top Pairs Bar Chart
+     function renderPairsBarChart({ sortedPairs }) {
+        console.log("Rendering Top Pairs Bar chart...");
+        // Clearing and visibility handled by renderCurrentChart/updateSvgDimensions
+
+        if (!sortedPairs?.length) { displayInfoMessage("No pair data."); return; }
+
+        // Scales
+        const maxValue = d3.max(sortedPairs, d => d.value);
+        const xScale = d3.scaleLinear().domain([0, maxValue > 0 ? maxValue : 1]).range([0, pairBarChartWidth]).nice();
+        const yScale = d3.scaleBand().domain(sortedPairs.map(d => d.pairLabel)).range([0, pairBarChartHeight]).padding(0.15);
+
+        // Axes
+        const xAxis = d3.axisBottom(xScale).ticks(Math.min(8, pairBarChartWidth / 70)).tickFormat(d3.format(maxValue >= 1000 ? "~s" : ",.0f"));
+        const yAxis = d3.axisLeft(yScale);
+
+        // Draw Axes
+        pairBarG.append("g").attr("class", "x axis").attr("transform", `translate(0,${pairBarChartHeight})`).call(xAxis)
+            .selectAll("text").style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-45)");
+        pairBarG.append("g").attr("class", "y axis").call(yAxis);
+
+        // Axis Labels
+        pairBarG.append("text").attr("class", "axis-label x-axis-title").attr("text-anchor", "middle").attr("x", pairBarChartWidth / 2).attr("y", pairBarChartHeight + pairBarChartMargin.bottom * 0.6).text("Co-occurrence Strength (Value)");
+        pairBarG.append("text").attr("class", "axis-label y-axis-title").attr("text-anchor", "middle").attr("transform", `translate(${-pairBarChartMargin.left / 1.3}, ${pairBarChartHeight / 2}) rotate(-90)`).text("Ingredient Pair");
+
+        // Draw Bars
+        const bars = pairBarG.selectAll(".bar").data(sortedPairs).enter().append("rect").attr("class", "bar")
+            .attr("y", d => yScale(d.pairLabel)).attr("height", yScale.bandwidth()).attr("x", 0)
+            .attr("fill", (d, i) => d3.interpolateBlues(1 - i / (sortedPairs.length * 1.5))) // Use a gradient
+            .attr("width", 0);
+        bars.transition().duration(750).delay((d, i) => i * 20).attr("width", d => Math.max(0, xScale(d.value)));
+        bars.append("title").text(d => `${d.pairLabel}: ${d.value.toLocaleString()}`);
+
+        console.log("Top Pairs Bar chart rendered.");
+    }
+
+    // --- Interactivity & Highlighting ---
+
+        // --- Interactivity Functions ---
+        // --- Interactivity Functions ---
+function setupHEBInteractivity(linkSelection, nodeSelection) {
+    // Handles hover effects specifically for the HEB chart
+    console.log("Setting up HEB Interactivity (Preserve Color)...");
+
+    if (!linkSelection || !nodeSelection || linkSelection.empty() || nodeSelection.empty()) {
+        console.warn("setupHEBInteractivity: Invalid or empty selections provided.");
+        return;
+    }
+
+    // --- Link Hover ---
+    linkSelection
+        .on("mouseover.heb", function (event, d) {
+            const sourceName = d.source;
+            const targetName = d.target;
+
+            // Dim all other links and nodes
+            linkSelection.style("stroke-opacity", 0.1); // Dim links
+            nodeSelection.style("opacity", 0.2);     // Dim nodes (affects circle and text)
+
+            // Enhance the hovered link (brighter, slightly thicker)
+            d3.select(this)
+                .style("stroke-opacity", 0.9) // Make it almost fully opaque
+                .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Slightly thicker
+                .raise(); // Bring to front
+
+            // Enhance connected nodes (fully opaque, maybe slightly bolder text/stroke)
+            nodeSelection.filter(nd => nd.data.name === sourceName || nd.data.name === targetName)
+                .style("opacity", 1.0) // Make fully opaque
+                .select("circle")
+                    .style("stroke-width", 2.0) // Slightly thicker circle stroke
+                    .style("stroke", "#333"); // Ensure stroke color is visible (if needed)
+            nodeSelection.filter(nd => nd.data.name === sourceName || nd.data.name === targetName)
+                .select("text")
+                    .style("font-weight", "bold"); // Make text bold
+
         })
-        .style("stroke", (d, i) => lineColors[i % lineColors.length]) // Cycle through colors
-        .style("fill", "none")
-        .style("stroke-width", d => Math.min(8, Math.max(1, Math.sqrt(d.value)))) // Scale width, cap max size
-        .style("stroke-opacity", 0.6); // Adjust opacity
-
-      // --- Draw Nodes ---
-      const nodes = g.selectAll(".node")
-        .data(root.leaves()) // Only draw leaf nodes (ingredients)
-        .enter().append("g")
-        .attr("class", "node")
-        // Position node group: Rotate, then translate along radius
-        .attr("transform", d => `rotate(${d.x - 90}) translate(${d.y},0)`)
-        .style("cursor", "pointer"); // Indicate interactivity
-
-
-      // Append circles to node groups
-      nodes.append("circle")
-        .attr("r", 5) // Node radius
-        .style("fill", d => color(d.parent.data.name)) // Color by parent category if desired, or fixed color
-        .style("stroke", "#333")
-        .style("stroke-width", 1);
-
-      // Append text labels to node groups
-      nodes.append("text")
-        .attr("dy", "0.31em")
-        // Position text based on angle: offset outwards, adjust anchor
-        .attr("x", d => d.x < 180 ? 8 : -8) // Offset text from circle
-        .style("text-anchor", d => d.x < 180 ? "start" : "end")
-        // Rotate text label back so it's horizontal
-        .attr("transform", d => d.x < 180 ? null : "rotate(180)")
-        .style("font-size", "10px")
-        .style("font-weight", "400")
-        // .style("fill", "#333") // Text color
-        .text(d => d.data.name);
-
-      // --- Interactivity ---
-      setupInteractivity();
-  }
-
-  // Recursive helper to filter the hierarchy based on a condition function
-  function filterHierarchy(node, condition) {
-      // If it's a leaf node, check the condition
-      if (!node.children) {
-          return condition(node) ? node : null;
-      }
-
-      // If it's an internal node, filter its children recursively
-      const filteredChildren = node.children
-          .map(child => filterHierarchy(child, condition))
-          .filter(child => child !== null); // Remove null children
-
-      // If the node has any surviving children, keep it, otherwise discard it
-      if (filteredChildren.length > 0) {
-          return { ...node, children: filteredChildren };
-      } else {
-           // Also check condition for internal nodes if they represent something meaningful (e.g., categories)
-           // If internal nodes should always be kept if they have children, remove this check.
-           // return condition(node) ? { ...node, children: [] } : null; // Decide if empty branches should be kept
-           return null; // Prune branch if no leaves survived
-      }
-  }
-
-
-  function setupInteractivity() {
-      const links = g.selectAll(".link");
-      const nodes = g.selectAll(".node"); // Select the group for easier targeting
-
-      links
-          .on("mouseover", function (event, d) {
-              const sourceName = d.source;
-              const targetName = d.target;
-
-              // Dim all links and nodes initially
-              links.style("stroke-opacity", 0.1);
-              nodes.style("opacity", 0.2);
-
-              // Highlight the hovered link
-              d3.select(this)
-                  .style("stroke-opacity", 0.9)
-                  .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Slightly thicker on hover
-                  .raise(); // Bring to front
-
-              // Highlight connected nodes
-              nodes.filter(nodeData => nodeData.data.name === sourceName || nodeData.data.name === targetName)
-                  .style("opacity", 1)
-                  .select("circle")
-                  .style("stroke-width", 2.5)
-                  .style("stroke", "#000");
-
-               nodes.filter(nodeData => nodeData.data.name === sourceName || nodeData.data.name === targetName)
-                  .select("text")
-                  .style("font-weight", "bold");
-          })
-          .on("mouseout", function (event, d) {
-              // Restore default opacity and styles
-              links
+        .on("mouseout.heb", function () {
+            // Restore default styles for ALL links and nodes in the HEB group
+            linkSelection
                 .style("stroke-opacity", 0.6) // Restore original opacity
                 .style("stroke-width", dd => Math.min(8, Math.max(1, Math.sqrt(dd.value)))); // Restore original width
 
-              nodes
-                .style("opacity", 1) // Restore original opacity
+            nodeSelection
+                .style("opacity", 1.0) // Restore original opacity
                 .select("circle")
-                .style("stroke-width", 1) // Restore original stroke width
-                .style("stroke", "#333"); // Restore original stroke color
-
-              nodes.select("text")
-                  .style("font-weight", "400"); // Restore original font weight
-          });
-
-      // Optional: Add hover effect to nodes to highlight their links
-      nodes
-        .on("mouseover", function(event, d) {
-            const nodeName = d.data.name;
-            nodes.style("opacity", 0.2); // Dim all nodes
-            links.style("stroke-opacity", 0.1); // Dim all links
-
-            d3.select(this).style("opacity", 1); // Highlight hovered node
-            d3.select(this).select("circle").style("stroke", "#000").style("stroke-width", 2.5);
-            d3.select(this).select("text").style("font-weight", "bold");
-
-
-            // Highlight connected links
-            links.filter(linkData => linkData.source === nodeName || linkData.target === nodeName)
-               .style("stroke-opacity", 0.9)
-               .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5)))
-               .raise();
-
-           // Highlight connected nodes
-           const connectedNodeNames = new Set([nodeName]);
-           links.filter(linkData => linkData.source === nodeName || linkData.target === nodeName)
-                .each(linkData => {
-                    connectedNodeNames.add(linkData.source);
-                    connectedNodeNames.add(linkData.target);
-                });
-
-           nodes.filter(nodeData => connectedNodeNames.has(nodeData.data.name))
-               .style("opacity", 1)
-               .select("circle") // Ensure circle style is also applied if needed
-               .style("stroke", "#000")
-               .style("stroke-width", 1.5); // Highlight neighbours slightly less than hovered one
-           nodes.filter(nodeData => connectedNodeNames.has(nodeData.data.name))
+                    .style("stroke-width", 1) // Restore original stroke width
+                    .style("stroke", "#333"); // Restore original stroke color (if changed)
+            nodeSelection
                 .select("text")
-                .style("font-weight", "500");
+                    .style("font-weight", "400"); // Restore original font weight
+        });
 
-           // Ensure the primary hovered node remains boldest
-            d3.select(this).select("text").style("font-weight", "bold");
-            d3.select(this).select("circle").style("stroke-width", 2.5);
+    // --- Node Hover ---
+    nodeSelection
+        .on("mouseover.heb", function(event, d) {
+            const nodeName = d.data.name;
 
+            // Dim all links and nodes initially
+            linkSelection.style("stroke-opacity", 0.1);
+            nodeSelection.style("opacity", 0.2);
+
+            // Enhance the hovered node itself
+            const currentNode = d3.select(this);
+            currentNode
+                .style("opacity", 1.0) // Fully opaque
+                .raise(); // Bring group to front
+            currentNode.select("circle")
+                .style("stroke-width", 2.5) // Boldest circle stroke
+                .style("stroke", "#000"); // Black stroke for primary node
+            currentNode.select("text")
+                .style("font-weight", "bold"); // Boldest text
+
+            // Find and enhance connected links and neighbor nodes
+            const connectedNodeNames = new Set();
+            const connectedLinkElements = []; // Store elements directly
+
+            linkSelection.each(function(ld) { // ld is link data {source, target, value}
+                let linkConnected = false;
+                if (ld.source === nodeName) { connectedNodeNames.add(ld.target); linkConnected = true; }
+                if (ld.target === nodeName) { connectedNodeNames.add(ld.source); linkConnected = true; }
+                if (linkConnected) connectedLinkElements.push(this); // Add the link DOM element
+            });
+
+            // Enhance connected links
+            d3.selectAll(connectedLinkElements)
+                .style("stroke-opacity", 0.9) // Brighter
+                .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Thicker
+                .raise();
+
+            // Enhance neighbor nodes (slightly less than primary)
+            nodeSelection.filter(nd => connectedNodeNames.has(nd.data.name))
+                .style("opacity", 1.0) // Fully opaque
+                .select("circle")
+                    .style("stroke-width", 2.0) // Slightly thicker stroke
+                    .style("stroke", "#333");
+            nodeSelection.filter(nd => connectedNodeNames.has(nd.data.name))
+                .select("text")
+                    .style("font-weight", "500"); // Semi-bold
         })
-        .on("mouseout", function(event, d) {
-              // Restore default styles (same as link mouseout)
-              links
+        .on("mouseout.heb", function() {
+             // Restore default styles for ALL links and nodes (same as link mouseout)
+             linkSelection
                 .style("stroke-opacity", 0.6)
                 .style("stroke-width", dd => Math.min(8, Math.max(1, Math.sqrt(dd.value))));
-
-              nodes
-                .style("opacity", 1)
+             nodeSelection
+                .style("opacity", 1.0)
                 .select("circle")
-                .style("stroke-width", 1)
-                .style("stroke", "#333");
-
-              nodes.select("text")
-                  .style("font-weight", "400");
+                    .style("stroke-width", 1)
+                    .style("stroke", "#333");
+            nodeSelection
+                .select("text")
+                    .style("font-weight", "400");
         });
-  }
+    console.log("HEB Interactivity setup complete (Preserve Color).");
+}
+    
+        // ... rest of the highlightNodes, clearHighlight etc. ...
+
+    // Main highlight function called by search input
+    function highlightNodes(searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        console.log(`Highlighting nodes for term: "${term}" on chart: ${currentChartType}`);
+        clearHighlight(false); // Clear previous highlights without clearing input box
+
+        if (!term) return; // Stop if search is empty
+
+        let nodesToHighlight = new Set();
+        let neighborsToHighlight = new Set(); // Use a different name for clarity
+        let linksToHighlight = new Set();
+
+        // --- Apply Highlighting based on Active Chart ---
+        if (currentChartType === 'heb') {
+            const allNodes = g.selectAll(".node");
+            const allLinks = g.selectAll(".link");
+
+            allNodes.each(function(d) { if (d.data.name?.toLowerCase().includes(term)) nodesToHighlight.add(d.data.name); });
+
+            if (nodesToHighlight.size > 0) {
+                allNodes.classed("dimmed", true); allLinks.classed("dimmed", true); // Dim all
+
+                allLinks.each(function(d) { // d is link data {source, target, value}
+                    let linkConnected = false;
+                    if (nodesToHighlight.has(d.source)) { neighborsToHighlight.add(d.target); linkConnected = true; }
+                    if (nodesToHighlight.has(d.target)) { neighborsToHighlight.add(d.source); linkConnected = true; }
+                    if (linkConnected) linksToHighlight.add(this); // Add the DOM element
+                });
+
+                nodesToHighlight.forEach(name => neighborsToHighlight.delete(name)); // Exclude self from neighbors
+
+                allNodes.filter(d => nodesToHighlight.has(d.data.name)).classed("dimmed", false).classed("highlighted", true).raise();
+                allNodes.filter(d => neighborsToHighlight.has(d.data.name)).classed("dimmed", false).classed("highlighted-neighbor", true);
+                d3.selectAll(Array.from(linksToHighlight)).classed("dimmed", false).classed("highlighted", true).raise(); // Apply to selected link elements
+            }
+
+        } else if (currentChartType === 'network') {
+            const allNodes = netG.selectAll(".network-node");
+            const allLinks = netG.selectAll(".network-link");
+
+            allNodes.each(function(d) { if (d.id?.toLowerCase().includes(term)) nodesToHighlight.add(d.id); });
+
+            if (nodesToHighlight.size > 0) {
+                allNodes.classed("dimmed", true); allLinks.classed("dimmed", true);
+
+                allLinks.each(function(d) { // d is link data {source, target, value} -> source/target might be objects or ids
+                    const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
+                    const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+                    let linkConnected = false;
+                    if (nodesToHighlight.has(sourceId)) { neighborsToHighlight.add(targetId); linkConnected = true; }
+                    if (nodesToHighlight.has(targetId)) { neighborsToHighlight.add(sourceId); linkConnected = true; }
+                    if (linkConnected) linksToHighlight.add(this);
+                });
+
+                nodesToHighlight.forEach(id => neighborsToHighlight.delete(id));
+
+                allNodes.filter(d => nodesToHighlight.has(d.id)).classed("dimmed", false).classed("highlighted", true).raise();
+                allNodes.filter(d => neighborsToHighlight.has(d.id)).classed("dimmed", false).classed("highlighted-neighbor", true);
+                 d3.selectAll(Array.from(linksToHighlight)).classed("dimmed", false).classed("highlighted", true).raise();
+            }
+
+        } else if (currentChartType === 'bar' || currentChartType === 'pairs-bar') {
+            const targetGroup = (currentChartType === 'bar') ? barG : pairBarG;
+            const allBars = targetGroup.selectAll(".bar");
+            const allYAxisLabels = targetGroup.selectAll(".y.axis .tick text");
+
+            allBars.classed("dimmed", true);
+            allYAxisLabels.classed("dimmed", true); // Dim labels too
+
+            allBars.filter(d => {
+                const label = (currentChartType === 'bar') ? d.name : d.pairLabel;
+                return label?.toLowerCase().includes(term);
+            }).classed("dimmed", false).classed("highlighted", true);
+
+            allYAxisLabels.filter(labelName => labelName?.toLowerCase().includes(term))
+               .classed("dimmed", false).classed("highlighted", true);
+        }
+         console.log(`Applied highlight for "${term}". Found: ${nodesToHighlight.size} primary, ${neighborsToHighlight.size} neighbors, ${linksToHighlight.size} links.`);
+    }
+
+    // Clears all highlight styles and optionally the search input
+    function clearHighlight(clearInput = true) {
+        console.log("Clearing highlights...");
+        svg.selectAll(".highlighted, .highlighted-neighbor, .dimmed")
+           .classed("highlighted highlighted-neighbor dimmed", false);
+        // Remove any direct style overrides if used (safer to rely on classes)
+        // svg.selectAll("[style*='opacity'], [style*='stroke']").attr("style", null);
+
+        if (clearInput) {
+            searchInput.node().value = '';
+        }
+    }
+
+    // Recursive helper for HEB filtering
+    function filterHierarchy(node, condition) {
+        if (!node?.children) { // Check if node exists and is a leaf
+            return node && condition(node) ? { ...node } : null;
+        }
+        // Filter children recursively
+        const filteredChildren = node.children
+            .map(child => filterHierarchy(child, condition))
+            .filter(child => child !== null); // Remove nulls (filtered out children)
+
+        // Keep internal node only if it has surviving children
+        if (filteredChildren.length > 0) {
+            return { ...node, children: filteredChildren }; // Return copy with filtered children
+        }
+        return null; // Prune branch if no children survive
+    }
 
 
-  // --- UI Helper Functions ---
-  function updateTitle(text) {
-      controls.select("h1").text(text);
-  }
+    // --- UI Helper Functions ---
+    function updateTitle(text) { controls.select("h1").text(text); }
 
-  function setLoadingState(isLoading, cuisineName = '') {
-      const loadingIndicator = container.select(".loading-indicator"); // Use a dedicated element
+    function setLoadingState(isLoading, cuisineName = '') {
+        // Select potentially existing indicator
+        const loadingIndicator = container.select(".loading-indicator");
 
-      if (isLoading) {
-          updateTitle(`Loading ${cuisineName}...`);
-          g.selectAll("*").remove(); // Clear current viz
-          container.style("opacity", 0.5); // Dim container
-          // Add a loading message/spinner if it doesn't exist
-          if (loadingIndicator.empty()) {
-              container.append("div")
-                  .attr("class", "loading-indicator")
-                  .style("position", "absolute")
-                  .style("top", "50%")
-                  .style("left", "50%")
-                  .style("transform", "translate(-50%, -50%)")
-                  .style("font-size", "1.5em")
-                  .style("color", "#555")
-                  .text("Loading...");
-          }
-          loadingIndicator.style("display", "block");
+        if (isLoading) {
+            updateTitle(`Loading ${cuisineName}...`);
+            container.style("opacity", 0.5); // Dim container
+            // Create indicator if it doesn't exist
+            if (loadingIndicator.empty()) {
+                container.append("div").attr("class", "loading-indicator")
+                    .style("position", "absolute").style("top", "50%").style("left", "50%")
+                    .style("transform", "translate(-50%, -50%)").style("font-size", "1.5em")
+                    .style("color", "#555").text("Loading...");
+            }
+             container.select(".loading-indicator").style("display", "block"); // Show it
+        } else {
+            container.style("opacity", 1); // Restore opacity
+            container.select(".loading-indicator").remove(); // Remove when done
+        }
+    }
 
-      } else {
-           container.style("opacity", 1); // Restore container opacity
-           if (!loadingIndicator.empty()) {
-               loadingIndicator.style("display", "none"); // Hide indicator
-           }
-      }
-  }
+    function displayErrorMessage(message) {
+        clearVisualization(); // Clear drawings first
+        const targetGroup = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barG : pairBarG) : (currentChartType === 'network' ? netG : g);
+        const targetWidth = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartWidth : pairBarChartWidth) : networkWidth;
+        const targetHeight = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartHeight : pairBarChartHeight) : networkHeight;
 
-  function displayErrorMessage(message) {
-      g.selectAll("*").remove(); // Clear drawing area
-      g.append("text")
-        .attr("class", "error-message")
-        .attr("x", 0)
-        .attr("y", 0) // Centered vertically due to group transform
-        .attr("text-anchor", "middle")
-        .attr("dy", "0.35em")
-        .style("fill", "red")
-        .style("font-size", "14px")
-        .text(message);
-      updateTitle("Error"); // Update main title
-  }
+        targetGroup.selectAll("*").remove(); // Clear only target group
 
-   function displayInfoMessage(message) {
-      g.selectAll("*").remove(); // Clear drawing area
-      g.append("text")
-        .attr("class", "info-message")
-        .attr("x", 0)
-        .attr("y", 0) // Centered vertically due to group transform
-        .attr("text-anchor", "middle")
-        .attr("dy", "0.35em")
-        .style("fill", "#666")
-        .style("font-size", "14px")
-        .text(message);
-      // Keep the title reflecting the selected cuisine
-  }
+        targetGroup.append("text")
+            .attr("class", "error-message") // Use CSS class
+            .attr("x", (currentChartType === 'heb') ? 0 : targetWidth / 2) // Centering depends on group transform
+            .attr("y", (currentChartType === 'heb') ? 0 : targetHeight / 2)
+            .attr("text-anchor", "middle").attr("dy", "0.35em")
+            .text(message);
+        // updateTitle("Error"); // Optional: Change main title on error
+    }
 
-   function clearVisualization(message = "") {
-      g.selectAll("*").remove();
-      currentCuisineData = null;
-       if (message) {
-           displayInfoMessage(message);
-       }
-  }
+     function displayInfoMessage(message) {
+        clearVisualization(); // Clear drawings first
+         const targetGroup = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barG : pairBarG) : (currentChartType === 'network' ? netG : g);
+        const targetWidth = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartWidth : pairBarChartWidth) : networkWidth;
+        const targetHeight = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartHeight : pairBarChartHeight) : networkHeight;
 
-  // --- Event Listeners ---
+        targetGroup.selectAll("*").remove(); // Clear only target group
 
-  // Dropdown change listener
-  const selectElement = document.getElementById("cuisine-select");
-  if (selectElement) {
-      selectElement.addEventListener("change", (e) => {
-           loadData(e.target.value); // Pass the selected cuisine name
-      });
-  } else {
-      console.error("Cuisine select dropdown not found.");
-      displayErrorMessage("Could not find the cuisine selector.");
-  }
+        targetGroup.append("text")
+            .attr("class", "info-message") // Use CSS class
+             .attr("x", (currentChartType === 'heb') ? 0 : targetWidth / 2)
+            .attr("y", (currentChartType === 'heb') ? 0 : targetHeight / 2)
+            .attr("text-anchor", "middle").attr("dy", "0.35em")
+            .text(message);
+    }
 
+    function clearVisualization(message = "") {
+        // Clear drawing content from ALL groups
+        g.selectAll("*").remove();
+        barG.selectAll("*").remove();
+        pairBarG.selectAll("*").remove();
+        netG.selectAll("*").remove();
 
-  // Resize listener
-  window.addEventListener("resize", () => {
-      updateSvgTransform(); // Update size and centering
-      // Re-render the visualization with the *current* data and new radius
-      if (currentCuisineData) {
-          renderVisualization(currentCuisineData);
-      } else {
-          // If no data is loaded (e.g., initial state or after error),
-          // you might want to redraw placeholder/error messages centered correctly.
-          // For simplicity, we clear it; it will be redrawn on next loadData call.
-          // Or, re-call displayErrorMessage/displayInfoMessage if needed.
-          g.selectAll("*").remove(); // Clear if no data to render
-      }
-  });
+        // Remove loading indicator if present
+        container.select(".loading-indicator").remove();
 
-  // --- Initial Load ---
-  // Don't load anything by default, let the user choose.
-  // The HTML's loadCuisines() will populate the dropdown.
-  clearVisualization("Select a cuisine to begin.");
+        if (message && !currentCuisineData) {
+            displayInfoMessage(message); // Show initial/info message
+        }
+    }
 
+    function setActiveButton(activeButtonId) {
+        chartButtonsContainer.selectAll("button").classed("active", false);
+        chartButtonsContainer.select(`#${activeButtonId}`).classed("active", true);
+    }
+
+    // --- Event Listeners ---
+
+    // Dropdown
+    const selectElement = document.getElementById("cuisine-select");
+    if (selectElement) {
+        selectElement.addEventListener("change", (e) => loadData(e.target.value));
+    } else { console.error("Cuisine select dropdown not found."); }
+
+    // Chart Buttons
+    chartButtonsContainer.selectAll("button").on("click", function() {
+        const buttonId = d3.select(this).attr("id");
+        let newChartType = '';
+        // Map button IDs to chart types
+        switch (buttonId) {
+            case 'heb-button': newChartType = 'heb'; break;
+            case 'network-button': newChartType = 'network'; break;
+            case 'bar-button': newChartType = 'bar'; break;
+            case 'pairs-bar-button': newChartType = 'pairs-bar'; break;
+            default: console.warn(`Unknown button ID clicked: ${buttonId}`); return;
+        }
+
+        if (newChartType !== currentChartType) {
+            console.log(`Switching chart type to: ${newChartType}`);
+            if (forceSimulation) { forceSimulation.stop(); forceSimulation = null; } // Stop sim if leaving network
+            currentChartType = newChartType;
+            setActiveButton(buttonId);
+            renderCurrentChart(); // Update dimensions and render
+            clearHighlight(); // Clear search on chart switch
+        }
+    });
+
+    // Search Input
+    searchInput.on("input", function() {
+        // Use debounce if performance becomes an issue on large datasets
+        highlightNodes(this.value);
+    });
+
+    // Clear Highlight Button
+    clearHighlightButton.on("click", () => clearHighlight(true));
+
+    // Resize Listener
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer); // Debounce resize event
+        resizeTimer = setTimeout(() => {
+            console.log("Window resized, updating layout...");
+             if (forceSimulation) forceSimulation.stop(); // Stop sim during resize
+            updateSvgDimensions(); // Update layout/sizes
+            renderCurrentChart(); // Re-render the active chart
+        }, 250); // Adjust debounce delay as needed
+    });
+
+    // --- Initial Load ---
+    updateSvgDimensions(); // Set initial sizes/visibility
+    clearVisualization("Select a cuisine to begin.");
+    setActiveButton('heb-button'); // Set default active button
+
+    console.log("Visualization Initialized.");
 
 }); // End DOMContentLoaded listener

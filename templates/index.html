@@ -1,62 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ingredient Web Visualization</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css">
+    <title>Ingredient Web Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div id="controls">
-    <h1>Ingredient Relationships</h1>
-    <select id="cuisine-select">
-      <!-- Options will be populated by loadCuisines -->
-      <option value="">Loading cuisines...</option>
-    </select>
-  </div>
-  <div id="heb-container">
-    <!-- SVG will be appended here by heb.js -->
-    <!-- Optional: Add a dedicated loading indicator div if preferred over the JS one -->
-    <!-- <div class="loading-indicator" style="display: none;">Loading...</div> -->
-  </div>
+    <div id="controls">
+        <h1>Ingredient Relationships</h1>
+        <div id="selection-controls">
+             <select id="cuisine-select">
+                <option value="">Loading cuisines...</option>
+            </select>
+            <!-- Search Feature -->
+            <input type="text" id="search-input" placeholder="Search ingredient...">
+            <button id="clear-highlight-button">Clear</button>
+        </div>
 
-  <script>
-    // This script runs first to populate the dropdown
-    async function loadCuisines() {
-      const select = document.getElementById("cuisine-select");
-      try {
-        const response = await fetch('/api/cuisines'); // API to get cuisine list
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const cuisines = await response.json();
 
-        select.innerHTML = '<option value="">Select Cuisine</option>'; // Reset options with placeholder
+        <!-- Chart Type Buttons -->
+        <div id="chart-buttons">
+            <button id="heb-button" class="chart-button active">Edge Bundling</button>
+            <button id="network-button" class="chart-button">Network Graph</button>
+            <button id="bar-button" class="chart-button">Top Ingredients</button>
+            <button id="pairs-bar-button" class="chart-button">Top Pairs</button>
+            <!-- Add more buttons here -->
+        </div>
+    </div>
 
-        // Sort cuisines alphabetically for user convenience
-        cuisines.sort();
+    <div id="chart-container">
+        <!-- SVG will be appended here -->
+    </div>
 
-        cuisines.forEach(cuisine => {
-          const option = document.createElement("option");
-          option.value = cuisine;
-          option.textContent = cuisine;
-          select.appendChild(option);
-        });
+    <script>
+        // Load Cuisines Dropdown (same as before)
+        async function loadCuisines() {
+          const select = document.getElementById("cuisine-select");
+          try {
+            const response = await fetch('/api/cuisines');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const cuisines = await response.json();
+            select.innerHTML = '<option value="">Select Cuisine</option>';
+            cuisines.sort();
+            cuisines.forEach(cuisine => {
+              const option = document.createElement("option");
+              option.value = cuisine; option.textContent = cuisine;
+              select.appendChild(option);
+            });
+          } catch (error) {
+            console.error("Error loading cuisines:", error);
+            select.innerHTML = '<option value="">Error loading cuisines</option>';
+          }
+        }
+        loadCuisines();
+    </script>
 
-        // Note: The event listener that calls loadData is now set up
-        // inside heb.js within the DOMContentLoaded wrapper.
-        // No need to add it here anymore.
-
-      } catch (error) {
-        console.error("Error loading cuisines:", error);
-        select.innerHTML = '<option value="">Error loading cuisines</option>';
-        // Optionally display an error message elsewhere too
-      }
-    }
-
-    // Load the list of cuisines when the page loads
-    loadCuisines();
-  </script>
-
-  <!-- Load the main visualization script AFTER the dropdown might be populated -->
-  <script src="/static/heb.js"></script>
+    <!-- Load the main visualization script -->
+    <script src="/static/heb.js"></script> <!-- Renamed JS file -->
 
 </body>
 </html>

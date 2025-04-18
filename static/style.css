@@ -1,89 +1,337 @@
+/* /static/style.css */
+
+/* --- Base Styles --- */
 body {
   font-family: sans-serif;
-  margin: 20px;
+  margin: 0;
+  padding: 0;
+  color: #333;
+  background-color: #fdfdff; /* Very light page background */
 }
 
+/* --- Controls Area --- */
 #controls {
-  margin-bottom: 20px;
+  padding: 15px;
   text-align: center;
+  background-color: #f8f9fa; /* Light background for controls */
+  border-bottom: 1px solid #dee2e6; /* Subtle separator */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 #controls h1 {
-    margin-bottom: 10px;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.8em;
+  color: #495057; /* Dark gray heading */
 }
 
-#cuisine-select {
-    padding: 8px 12px;
-    font-size: 1em;
-    min-width: 200px;
+#selection-controls {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 10px; /* Consistent spacing between controls */
 }
 
-#heb-container {
-  position: relative; /* Needed for absolute positioning of loading indicator */
-  width: 100%;
-  max-width: 1000px; /* Control max width if desired */
-  margin: 0 auto; /* Center the container */
-  min-height: 800px; /* Ensure space for visualization */
-  border: 1px solid #eee; /* Optional: visualize container bounds */
+#controls select,
+#search-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da; /* Standard input border */
+  border-radius: 4px;
+  font-size: 1em;
+  min-width: 150px;
 }
 
-/* Link Styles */
-.link {
+#search-input {
+   min-width: 200px;
+}
+
+#chart-buttons {
+  margin-top: 10px;
+}
+
+#chart-buttons button,
+#clear-highlight-button {
+  margin: 0 5px;
+  padding: 8px 15px;
+  cursor: pointer;
+  border: 1px solid #adb5bd; /* Slightly darker border than inputs */
+  background-color: #e9ecef; /* Light gray button */
+  color: #495057;
+  border-radius: 4px;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+#chart-buttons button:hover,
+#clear-highlight-button:hover {
+  background-color: #dee2e6; /* Darken slightly on hover */
+  border-color: #6c757d;
+}
+
+#chart-buttons button.active {
+  background-color: #007bff; /* Primary blue for active button */
+  color: white;
+  font-weight: bold;
+  border-color: #0056b3; /* Darker blue border */
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* --- Chart Container --- */
+#chart-container {
+  width: 95%;
+  max-width: 1200px; /* Limit maximum width */
+  margin: 25px auto; /* Center container with vertical margin */
+  position: relative; /* Needed for positioning messages */
+  border: 1px solid #dee2e6; /* Container border */
+  box-sizing: border-box;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+  background-color: #fff; /* White background for chart area */
+  /* Height is set dynamically in JS */
+}
+
+/* --- HEB Specific Styles --- */
+.heb-group .link { /* Target links only within HEB group */
   fill: none;
-  stroke-linecap: round; /* Smoother ends */
-  transition: stroke-opacity 0.3s ease, stroke-width 0.3s ease; /* Smooth transitions */
+  stroke-opacity: 0.6;
+  stroke-linecap: round; /* Nicer line ends */
+  /* stroke and stroke-width set dynamically */
 }
 
-/* Node Styles */
-.node {
-   transition: opacity 0.3s ease; /* Smooth transitions for node groups */
+.heb-group .node text { /* Target text only within HEB group */
+  font-family: sans-serif;
+  font-size: 10px;
+  fill: #333;
+  paint-order: stroke; /* Outline text */
+  stroke: white;
+  stroke-width: 2.5px; /* Slightly thicker outline */
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  pointer-events: none;
 }
 
-.node circle {
-  /* Fill is set by JS */
-  /* Stroke is set by JS */
-  transition: stroke-width 0.3s ease, stroke 0.3s ease, r 0.3s ease; /* Smooth transitions */
-}
-
-.node text {
-  fill: #333; /* Default text color */
-  paint-order: stroke; /* Make text more readable over lines */
+.heb-group .node circle { /* Target circles only within HEB group */
   stroke: #fff; /* White outline */
+  stroke-width: 1px;
+  /* fill set dynamically */
+}
+
+/* --- Network Graph Specific Styles --- */
+.network-group .network-link {
+  stroke: #adb5bd; /* Lighter gray links */
+  stroke-opacity: 0.6;
+  stroke-width: 1.5px;
+}
+
+.network-group .network-node circle {
+  stroke: #fff; /* White outline for contrast */
+  stroke-width: 1.5px;
+}
+
+.network-group .network-node text {
+  font-family: sans-serif;
+  font-size: 10px; /* Slightly larger text for network */
+  fill: #333;
+  pointer-events: none; /* Allow node dragging */
+  paint-order: stroke;
+  stroke: white;
   stroke-width: 2px;
-  stroke-linejoin: round;
-  transition: font-weight 0.3s ease; /* Smooth transitions */
 }
 
-/* Highlight Styles (triggered by JS adding/removing classes or direct style manipulation) */
-/* If using classes (add .classed() in JS): */
-/*
-.link-highlighted {
-  stroke-opacity: 0.9 !important;
-  stroke-width: 3px !important;
+/* --- Bar Chart / Pairs Bar Chart Specific Styles --- */
+.bar-group .bar,
+.pair-bar-group .bar {
+  /* fill set dynamically */
+  shape-rendering: crispEdges; /* Sharper edges */
+  transition: fill 0.2s ease, opacity 0.2s ease;
 }
 
-.node-highlighted circle {
-  stroke: #000 !important;
-  stroke-width: 2.5px !important;
-  r: 7px !important;
+.bar-group .bar:hover,
+.pair-bar-group .bar:hover {
+  /* Example hover effect: slightly lighter fill */
+  filter: brightness(1.2);
+  /* Alternatively: fill: lightsteelblue; */
 }
 
-.text-highlighted {
-  font-weight: bold !important;
-  fill: #000 !important;
-} */
+.axis-label { /* For titles like "Ingredient", "Occurrences" */
+  font-size: 13px;
+  fill: #333;
+  font-family: sans-serif;
+  font-weight: 500;
+}
 
-/* Styles for loading/error messages (can be text elements in SVG or HTML divs) */
-.loading-indicator,
-.error-message,
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #ced4da; /* Lighter axis lines */
+  shape-rendering: crispEdges;
+}
+
+.axis text { /* Axis tick labels */
+  font-family: sans-serif;
+  font-size: 10px;
+  fill: #495057; /* Dark gray text */
+}
+
+.x.axis text { /* Specific style for potentially rotated X axis labels */
+  text-anchor: end !important;
+}
+
+.y.axis .tick text { /* Y Axis labels (ingredients/pairs) */
+  font-size: 11px; /* Slightly larger for readability */
+}
+
+/* --- Loading/Error/Info Messages --- */
+.loading-indicator, .error-message, .info-message {
+  position: absolute;
+  top: 45%; /* Adjust vertical centering */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2em;
+  color: #495057;
+  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white background */
+  padding: 15px 25px;
+  border-radius: 5px;
+  text-align: center;
+  z-index: 10; /* Ensure above SVG */
+  border: 1px solid #ced4da; /* Subtle border */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+.error-message {
+   color: #dc3545; /* Bootstrap danger red */
+   border-color: #f5c6cb;
+   background-color: #f8d7da; /* Light red background */
+}
 .info-message {
-    /* Styles are set inline in JS for SVG text, adjust if needed */
-    /* If using an HTML div for loading: */
-    /* position: absolute; */
-    /* top: 50%; */
-    /* left: 50%; */
-    /* transform: translate(-50%, -50%); */
-    /* padding: 20px; */
-    /* background: rgba(255, 255, 255, 0.8); */
-    /* border-radius: 5px; */
+  color: #6c757d; /* Bootstrap secondary gray */
+  border-color: #ced4da;
+  background-color: #e9ecef; /* Light gray background */
 }
+
+/* --- Highlight Styles (Applied by JS during Search) --- */
+
+/* Style for elements that are NOT highlighted or neighbors */
+.dimmed {
+  opacity: 0.1 !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Styles for primary highlighted elements */
+.highlighted {
+  opacity: 1.0 !important;
+  stroke: #007bff !important; /* Primary highlight stroke color (blue) */
+  stroke-width: 2.5px !important;
+  /* fill/font-weight handled per element type */
+  transition: opacity 0.3s ease, stroke 0.3s ease;
+}
+
+/* Style for neighbors of highlighted elements */
+.highlighted-neighbor {
+  opacity: 0.9 !important; /* Slightly less opaque than primary */
+  stroke: #17a2b8 !important; /* Neighbor highlight stroke color (teal) */
+  stroke-width: 1.5px !important;
+  /* fill/font-weight handled per element type */
+  transition: opacity 0.3s ease, stroke 0.3s ease;
+}
+
+/* --- Text Highlighting Overrides --- */
+
+/* Text within PRIMARY highlighted GRAPH nodes (HEB, Network) */
+/* Does NOT apply to axis labels directly */
+.highlighted text {
+  opacity: 1.0 !important;
+  fill: black !important; /* Ensure high contrast */
+  font-weight: bold !important;
+  stroke: white !important; /* Maintain readability outline */
+  stroke-width: 2px !important;
+}
+
+/* Text within NEIGHBOR highlighted GRAPH nodes (HEB, Network) */
+.highlighted-neighbor text {
+  opacity: 1.0 !important;
+  fill: #333 !important; /* Dark gray, less prominent than primary */
+  font-weight: 500 !important; /* Semi-bold */
+  stroke: white !important;
+  stroke-width: 1.5px !important;
+}
+
+/* --- Specific Chart Element Highlighting --- */
+
+/* Network Graph Search Highlight */
+.network-group .network-link.highlighted {
+   stroke-width: 2.5px !important;
+   stroke-opacity: 0.9 !important;
+   /* stroke color uses .highlighted */
+}
+.network-group .network-node.highlighted circle {
+  stroke: #0056b3 !important; /* Darker blue outline */
+  fill-opacity: 1.0 !important;
+}
+.network-group .network-node.highlighted-neighbor circle {
+  stroke: #117a8b !important; /* Darker teal outline */
+  fill-opacity: 0.9 !important;
+}
+/* Network text uses generic '.highlighted text' / '.highlighted-neighbor text' rules */
+
+
+/* HEB Search Highlight */
+.heb-group .link.highlighted {
+   stroke-width: 3px !important;
+   stroke-opacity: 0.9 !important;
+    /* stroke color uses .highlighted */
+}
+.heb-group .node.highlighted circle {
+   stroke: black !important; /* Black outline for primary HEB node */
+   /* stroke-width uses .highlighted */
+   opacity: 1.0 !important;
+}
+.heb-group .node.highlighted-neighbor circle {
+   /* stroke color uses .highlighted-neighbor */
+   /* stroke-width uses .highlighted-neighbor */
+   opacity: 0.9 !important;
+}
+/* HEB text uses generic '.highlighted text' / '.highlighted-neighbor text' rules */
+
+
+/* Bar Charts Search Highlight */
+.bar-group .bar.highlighted,
+.pair-bar-group .bar.highlighted {
+  stroke: black !important; /* Outline highlighted bars */
+  stroke-width: 1.5px !important;
+  opacity: 1.0 !important;
+  fill: #007bff !important; /* Change FILL to primary highlight color */
+}
+
+/* --- Y-AXIS LABEL HIGHLIGHTING (Bar Charts) --- */
+/* Target the TEXT element within a TICK that has the HIGHLIGHTED class */
+.y.axis .tick text.highlighted {
+   opacity: 1.0 !important; /* MAKE FULLY VISIBLE */
+   fill: black !important;   /* MAKE BLACK */
+   font-weight: bold !important; /* MAKE BOLD */
+   stroke: none !important; /* Ensure no accidental stroke */
+}
+/* Target the TEXT element within a TICK that has the HIGHLIGHTED-NEIGHBOR class (if used) */
+.y.axis .tick text.highlighted-neighbor {
+   opacity: 1.0 !important; /* MAKE FULLY VISIBLE */
+   fill: #333 !important;    /* MAKE DARK GRAY */
+   font-weight: 500 !important; /* MAKE SEMI-BOLD */
+   stroke: none !important;
+}
+/* Ensure that Y axis text NOT dimmed remains visible and styled correctly*/
+.y.axis .tick text:not(.dimmed):not(.highlighted):not(.highlighted-neighbor) {
+   opacity: 1.0 !important; /* Override potential inherited low opacity from dimmed .tick */
+   fill: #495057 !important; /* Restore default axis text color */
+   font-weight: normal !important; /* Ensure not bold if previously highlighted */
+   stroke: none !important;
+}
+/* Ensure dimmed axis labels are very faint */
+.y.axis .tick text.dimmed {
+   fill: #adb5bd !important; /* Light gray */
+   opacity: 0.4 !important; /* Adjust dim level as needed */
+   font-weight: normal !important;
+   stroke: none !important;
+}
+
+/* --- End of Highlight Styles --- */
