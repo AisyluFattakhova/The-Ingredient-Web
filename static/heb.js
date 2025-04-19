@@ -1,5 +1,5 @@
 /**
- * /static/main_viz.js
+ * /static/heb.js
  * Main D3.js script for ingredient visualization dashboard.
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartButtonsContainer = d3.select("#chart-buttons");
     const searchInput = d3.select("#search-input");
     const clearHighlightButton = d3.select("#clear-highlight-button");
-    const vizHeight = 650; // Height for the SVG container
+    const vizHeight = Math.min(700, window.innerHeight * 0.8); // Dynamic height
     const defaultRadiusMargin = 80; // For HEB layout
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10); // General color scale
     const lineColors = [ // Specific colors for HEB links
@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Margins for different bar charts
     const barChartMargin = { top: 30, right: 30, bottom: 120, left: 180 };
     const pairBarChartMargin = { top: 30, right: 30, bottom: 120, left: 200 };
+    const initialHebScale = 0.9; // Define initial scale for HEB
+    const hebVerticalOffset = 0; // Adjust Y offset for HEB center if needed
 
     // --- State Variables ---
     let currentWidth = container.node()?.getBoundingClientRect().width || 800;
@@ -30,12 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let radius, barChartWidth, barChartHeight, pairBarChartWidth, pairBarChartHeight, networkWidth, networkHeight; // Chart dimensions
     let forceSimulation = null; // Holds the network simulation object
 
-    // --- SVG Setup ---
     const svg = container
         .append("svg")
         .attr("width", "100%")
         .attr("height", vizHeight)
-        .style("background", "transparent");
+        .attr("preserveAspectRatio", "xMidYMid meet")
+        .style("overflow", "visible"); // Allow SVG content to extend
 
     // Create dedicated groups for each chart type
     const g = svg.append("g").attr("class", "heb-group");
@@ -49,10 +51,52 @@ document.addEventListener('DOMContentLoaded', () => {
         .radius(d => d.y)
         .angle(d => d.x * Math.PI / 180);
 
+    // --- Zoom Behavior Definition ---
+    const zoom = d3.zoom()
+        .scaleExtent([0.5, 3]) // Min and max zoom levels
+        .on('zoom', (event) => {
+            // The zoom event handler now SOLELY controls the HEB group's transform
+            if (currentChartType === 'heb') {
+                g.attr('transform', event.transform);
+            }
+            // Note: Zoom is currently only active/applied for HEB.
+            // If you want zoom on other charts, you'd need to adapt this handler.
+        });
+
+    // --- Zoom Helper Functions (for HEB) ---
+
+    // Function to calculate the desired initial transform state for HEB
+    function getInitialHebTransform() {
+        // Uses currentWidth and vizHeight available in the scope
+        return d3.zoomIdentity
+            .translate(currentWidth / 2, vizHeight / 2 + hebVerticalOffset) // Centering translation
+            .scale(initialHebScale);                                        // Initial scale
+    }
+
+    // Reset function now transitions TO the calculated initial state
+    function resetHEBView() {
+        const initialTransform = getInitialHebTransform();
+        svg.transition()
+           .duration(750) // Smooth transition
+           .call(zoom.transform, initialTransform); // Reset to the calculated initial state
+    }
+
+    // Apply zoom behavior to the main SVG
+    svg.call(zoom)
+       .on("dblclick.zoom", null); // Disable double-click zoom
+
+    // --- Event Listeners (Top) ---
+    document.getElementById('reset-view').addEventListener('click', resetHEBView);
+    // Other listeners (Zoom In/Out, Pan) are removed as per your code.
+
     // --- Core Functions ---
 
     function calculateRadius(width) {
-        return Math.max(150, Math.min(width, vizHeight) / 2 - defaultRadiusMargin);
+        const containerPadding = 40; // Account for container padding in CSS
+        return Math.min(
+          (width - containerPadding) * 0.6,
+          (vizHeight - containerPadding) * 0.6 // Consider height too
+        );
     }
 
     // Updates dimensions, transforms, and visibility based on current chart type and window size
@@ -69,9 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
         networkWidth = currentWidth;
         networkHeight = vizHeight;
 
-        // Apply transforms and manage visibility for each group
-        g.attr("transform", `translate(${currentWidth / 2},${vizHeight / 2})`)
-         .style("display", currentChartType === 'heb' ? "block" : "none");
+        // Manage visibility for each group
+        // **REMOVED** direct g.attr("transform") here. Zoom handler controls it.
+        g.style("display", currentChartType === 'heb' ? "block" : "none");
 
         barG.attr("transform", `translate(${barChartMargin.left},${barChartMargin.top})`)
             .style("display", currentChartType === 'bar' ? "block" : "none");
@@ -86,6 +130,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (forceSimulation) {
             forceSimulation.force("center", d3.forceCenter(networkWidth / 2, networkHeight / 2));
             // forceSimulation.alpha(0.1).restart(); // Optional: reheat simulation slightly
+        }
+
+        // If HEB is the current chart, ensure its zoom transform is updated
+        // This handles resize cases where the center point changes
+        if (currentChartType === 'heb') {
+            // Get the current zoom state
+            const currentTransform = d3.zoomTransform(svg.node());
+            // Calculate the new desired center based on the *current scale*
+            const newTranslateX = currentWidth / 2;
+            const newTranslateY = vizHeight / 2 + hebVerticalOffset;
+            // Create a new transform maintaining the current scale but updating the center
+            // (This is a simple recentering; more complex logic might be needed
+            // if you want to keep a specific point fixed during resize)
+             const recenteredTransform = d3.zoomIdentity
+                 .translate(newTranslateX, newTranslateY)
+                 .scale(currentTransform.k); // Keep current scale
+
+            // Apply the recentered transform immediately (no transition needed on resize)
+            svg.call(zoom.transform, recenteredTransform);
+             // Alternatively, if you want to fully reset on resize:
+             // svg.call(zoom.transform, getInitialHebTransform());
         }
     }
 
@@ -128,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Data Processing Functions ---
-
+    // (processDataForHEB, processDataForBarChart, processDataForNetwork, processDataForPairsBarChart - unchanged)
     // Processes data for HEB (Filters based on link strength & node degree)
     function processDataForHEB(rawData) {
         console.log("Processing data for HEB...");
@@ -168,8 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (finalLinks.length === 0) return { error: "No connections remain between filtered ingredients." };
 
         const root = d3.hierarchy(filteredHierarchy).sum(d => d.value || 1).sort((a, b) => d3.ascending(a.data.name, b.data.name));
-        const cluster = d3.cluster().size([360, radius])(root); // Apply cluster layout
-
+        const cluster = d3.cluster()
+        .size([360, radius * 0.85]) // Use 85% of available radius
+        (root);
         const nodeMap = new Map(root.leaves().map(d => [d.data.name, d])); // Map names to D3 nodes
 
         console.log(`HEB Processed: ${nodeMap.size} nodes, ${finalLinks.length} links.`);
@@ -240,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { sortedPairs: chartData };
     }
 
+
     // --- Chart Rendering Functions ---
 
     // Dispatcher: decides which chart to render based on state
@@ -255,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Clear previous drawings & ensure correct layout/visibility for the target chart
         clearVisualization();
-        updateSvgDimensions();
+        updateSvgDimensions(); // Call this BEFORE processing/rendering
 
         try {
             let processed = null;
@@ -316,103 +383,169 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Renders HEB Chart
-        // Renders HEB Chart
-        function renderHEB({ root, finalLinks, nodeMap }) {
-            console.log("Rendering HEB chart...");
-            // Clearing and visibility handled by renderCurrentChart/updateSvgDimensions
-    
-            if (!root || !finalLinks || !nodeMap || nodeMap.size === 0) {
-                 displayInfoMessage("Not enough data for HEB view after filtering."); return;
-            }
-    
-             let linksToDraw = finalLinks.filter(link => nodeMap.has(link.source) && nodeMap.has(link.target));
-             if(linksToDraw.length !== finalLinks.length) console.warn("Some HEB links dropped due to missing nodes in map.");
-    
-            // Draw Links
-            const linkSelection = g.selectAll(".link") // Capture the selection
-                .data(linksToDraw).enter().append("path").attr("class", "link")
-                .attr("d", d => lineRadial([nodeMap.get(d.source), nodeMap.get(d.target)]))
-                .style("stroke", (d, i) => lineColors[i % lineColors.length])
-                .style("fill", "none")
-                .style("stroke-width", d => Math.min(8, Math.max(1, Math.sqrt(d.value))))
-                .style("stroke-opacity", 0.6);
-    
-            // Draw Nodes
-            const nodeSelection = g.selectAll(".node") // Capture the selection
-                .data(root.leaves()).enter().append("g").attr("class", "node")
-                .attr("transform", d => `rotate(${d.x - 90}) translate(${d.y},0)`)
-                .style("cursor", "pointer");
-    
-            nodeSelection.append("circle").attr("r", 5)
-                .style("fill", d => colorScale(d.parent.data.name))
-                .style("stroke", "#333").style("stroke-width", 1);
-            nodeSelection.append("text").attr("dy", "0.31em")
-                .attr("x", d => d.x < 180 ? 8 : -8).style("text-anchor", d => d.x < 180 ? "start" : "end")
-                .attr("transform", d => d.x < 180 ? null : "rotate(180)")
-                .text(d => d.data.name);
-    
-            // *******************************************
-            // ***** ADD THIS LINE BACK / ENSURE IT EXISTS *****
-            setupHEBInteractivity(linkSelection, nodeSelection);
-            // *******************************************
-    
-            console.log("HEB chart rendered.");
+    function renderHEB({ root, finalLinks, nodeMap }) {
+        console.log("Rendering HEB chart...");
+
+        // Calculate dynamic text scaling
+        const textScale = Math.min(1.2, Math.max(0.8, currentWidth / 1000));
+
+        // Clear previous elements and show message if no data
+        g.selectAll("*").remove();
+        if (!root || !finalLinks || !nodeMap || nodeMap.size === 0) {
+            displayInfoMessage("Not enough data for HEB view after filtering.");
+            return;
         }
+
+        // Filter links and warn if any were dropped
+        let linksToDraw = finalLinks.filter(link => nodeMap.has(link.source) && nodeMap.has(link.target));
+        if (linksToDraw.length !== finalLinks.length) {
+            console.warn("Some HEB links dropped due to missing nodes in map.");
+        }
+
+        // **REMOVED** direct transform setting: g.attr("transform", ...);
+
+        // Draw Links
+        const linkSelection = g.selectAll(".link")
+            .data(linksToDraw).enter().append("path")
+            .attr("class", "link")
+            .attr("d", d => lineRadial([nodeMap.get(d.source), nodeMap.get(d.target)]))
+            .style("stroke", (d, i) => lineColors[i % lineColors.length])
+            .style("fill", "none")
+            .style("stroke-width", d => Math.min(8, Math.max(1, Math.sqrt(d.value))))
+            .style("stroke-opacity", 0.6)
+            .style("pointer-events", "visibleStroke"); // Make links interactive
+
+        // Draw Nodes
+        const nodeSelection = g.selectAll(".node")
+            .data(root.leaves()).enter().append("g")
+            .attr("class", "node")
+            .attr("transform", d => `rotate(${d.x - 90}) translate(${d.y},0)`)
+            .style("cursor", "pointer"); // Use pointer cursor for hover/click indication
+
+        // Add node circles
+        nodeSelection.append("circle")
+            .attr("r", 5)
+            .style("fill", d => colorScale(d.parent.data.name))
+            .style("stroke", "#333")
+            .style("stroke-width", 1);
+
+        // Add node labels with dynamic sizing
+        nodeSelection.append("text")
+            .attr("dy", `${3 * textScale}px`)
+            .attr("x", d => d.x < 180 ? 8 : -8)
+            .style("text-anchor", d => d.x < 180 ? "start" : "end")
+            .attr("transform", d => d.x < 180 ? null : "rotate(180)")
+            .style("font-size", `${10 * textScale}px`)
+            .style("text-shadow", "1px 1px 2px white")
+            .text(d => d.data.name);
+
+        // Setup interactivity (hover effects)
+        setupHEBInteractivity(linkSelection, nodeSelection);
+
+        // --- IMPORTANT: Set the INITIAL view using zoom.transform ---
+        // Apply the initial transform state WITHOUT transition when rendering
+        // Do this *after* elements are added to 'g' but before returning.
+        svg.call(zoom.transform, getInitialHebTransform());
+
+        // Make sure zoom is enabled for this chart (it's attached to SVG globally)
+        // svg.call(zoom).on("dblclick.zoom", null); // Already done globally
+
+        // --- Node Dragging (Example - basic implementation) ---
+        // This drag might interfere with zoom/pan unless modifier keys are used.
+        // Consider if this is truly needed alongside pan/zoom.
+        /*
+        nodeSelection.call(d3.drag()
+            .subject(function(event, d) { // Important: define drag subject relative to container
+                // Transform screen coords to SVG coords, then invert the node's static transform
+                const [svgX, svgY] = d3.pointer(event, svg.node());
+                const rotated = (d.x - 90) * Math.PI / 180;
+                const currentX = d.y * Math.cos(rotated);
+                const currentY = d.y * Math.sin(rotated);
+                return { x: currentX, y: currentY }; // Return position relative to the group's origin (center)
+            })
+            .on("start", function(event) {
+                 event.sourceEvent.stopPropagation(); // Prevent zoom from starting
+                 d3.select(this).raise().classed("dragging", true);
+            })
+            .on("drag", function(event, d) {
+                // This naive drag won't preserve the radial layout well
+                // It just moves the group based on mouse position
+                // A proper radial drag is more complex involving angle/radius updates
+                const [newX, newY] = [event.x, event.y]; // These are relative to group origin from subject
+                const newAngle = (Math.atan2(newY, newX) * 180 / Math.PI) + 90; // Adjust back to D3 angle
+                const newRadius = Math.sqrt(newX * newX + newY * newY);
+
+                d.x = newAngle < 0 ? newAngle + 360 : newAngle; // Update data angle
+                d.y = newRadius; // Update data radius
+
+                d3.select(this).attr("transform", `rotate(${d.x - 90}) translate(${d.y},0)`);
+
+                // Need to redraw connected links if nodes move relative to each other
+                // This gets complex quickly!
+                // updateLinksConnectedTo(d);
+            })
+            .on("end", function() {
+                 d3.select(this).classed("dragging", false);
+            }));
+        */
+
+        console.log("HEB chart rendered with initial view set via zoom.");
+    }
+
 
     // Renders Top Ingredients (Occurrence) Bar Chart
-        // Renders Top Ingredients (Occurrence) Bar Chart
-        function renderBarChart({ sortedNodes }) {
-            console.log("Rendering Top Ingredients Bar chart...");
-            barG.selectAll("*").remove(); // Clear only Bar group
-    
-            if (!sortedNodes?.length) { displayInfoMessage("No ingredient data."); return; }
-    
-            // Scales (Keep as is)
-            const maxValue = d3.max(sortedNodes, d => d.value);
-            const xScale = d3.scaleLinear().domain([0, maxValue > 0 ? maxValue : 1]).range([0, barChartWidth]).nice();
-            const yScale = d3.scaleBand().domain(sortedNodes.map(d => d.name)).range([0, barChartHeight]).padding(0.15);
-    
-            // Axes (Keep as is)
-            const xAxis = d3.axisBottom(xScale).ticks(Math.min(10, barChartWidth / 60)).tickFormat(d3.format(maxValue >= 1000 ? "~s" : ",.0f"));
-            const yAxis = d3.axisLeft(yScale);
-    
-            // Draw Axes (Keep as is)
-            barG.append("g").attr("class", "x axis").attr("transform", `translate(0,${barChartHeight})`).call(xAxis)
-                .selectAll("text").style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-65)");
-            barG.append("g").attr("class", "y axis").call(yAxis);
-    
-            // --- Axis Labels (USING POSITIONING FROM PAIRS CHART) ---
-            // X Axis Label
-            barG.append("text").attr("class", "axis-label x-axis-title")
-                .attr("text-anchor", "middle")
-                .attr("x", barChartWidth / 2)
-                // Use the same relative positioning as pairs chart
-                .attr("y", barChartHeight + barChartMargin.bottom * 0.6) // Position below axis
-                .text("Number of Occurrences"); // Keep the correct text
-    
-            // Y Axis Label
-            barG.append("text").attr("class", "axis-label y-axis-title")
-                .attr("text-anchor", "middle")
-                // Use the same transform as pairs chart
-                .attr("transform", `translate(${-barChartMargin.left / 1.3}, ${barChartHeight / 2}) rotate(-90)`)
-                .text("Ingredient"); // Keep the correct text
-            // --- End Axis Labels ---
-    
-            // Draw Bars (Keep as is)
-            const barColorInterpolator = d3.interpolateBlues;
-            const bars = barG.selectAll(".bar").data(sortedNodes).enter().append("rect").attr("class", "bar")
-                .attr("y", d => yScale(d.name)).attr("height", yScale.bandwidth()).attr("x", 0)
-                .attr("fill", (d, i) => barColorInterpolator(0.8 - (i / (sortedNodes.length * 1.5))))
-                .attr("width", 0);
-            bars.transition().duration(750).delay((d, i) => i * 25).attr("width", d => Math.max(0, xScale(d.value)));
-            bars.append("title").text(d => `${d.name}: ${d.value.toLocaleString()} occurrences`);
-    
-            console.log("Top Ingredients Bar chart rendered.");
-        }
+    function renderBarChart({ sortedNodes }) {
+        console.log("Rendering Top Ingredients Bar chart...");
+        barG.selectAll("*").remove(); // Clear only Bar group
 
-    // Renders Network Graph
-        // Renders Network Graph with adjusted forces
-            // Renders Network Graph with STRONGER repulsion and collision
+        if (!sortedNodes?.length) { displayInfoMessage("No ingredient data."); return; }
+
+        // Scales (Keep as is)
+        const maxValue = d3.max(sortedNodes, d => d.value);
+        const xScale = d3.scaleLinear().domain([0, maxValue > 0 ? maxValue : 1]).range([0, barChartWidth]).nice();
+        const yScale = d3.scaleBand().domain(sortedNodes.map(d => d.name)).range([0, barChartHeight]).padding(0.15);
+
+        // Axes (Keep as is)
+        const xAxis = d3.axisBottom(xScale).ticks(Math.min(10, barChartWidth / 60)).tickFormat(d3.format(maxValue >= 1000 ? "~s" : ",.0f"));
+        const yAxis = d3.axisLeft(yScale);
+
+        // Draw Axes (Keep as is)
+        barG.append("g").attr("class", "x axis").attr("transform", `translate(0,${barChartHeight})`).call(xAxis)
+            .selectAll("text").style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-65)");
+        barG.append("g").attr("class", "y axis").call(yAxis)
+        .selectAll("text")
+        .style("font-size", "15px"); // Add this line
+
+        // --- Axis Labels (USING POSITIONING FROM PAIRS CHART) ---
+        // X Axis Label
+        barG.append("text").attr("class", "axis-label x-axis-title")
+            .attr("text-anchor", "middle")
+            .attr("x", barChartWidth / 2)
+            .attr("y", barChartHeight + barChartMargin.bottom * 0.7) // Adjusted Y slightly
+            .text("Number of Occurrences")
+            .style("font-size", "14px");
+
+        // Y Axis Label
+        barG.append("text").attr("class", "axis-label y-axis-title")
+            .attr("text-anchor", "middle")
+            .attr("transform", `translate(${-barChartMargin.left / 1.4}, ${barChartHeight / 2}) rotate(-90)`) // Adjusted X slightly
+            .text("Ingredient")
+            .style("font-size", "14px");
+
+        // Draw Bars (Keep as is)
+        const barColorInterpolator = d3.interpolateBlues;
+        const bars = barG.selectAll(".bar").data(sortedNodes).enter().append("rect").attr("class", "bar")
+            .attr("y", d => yScale(d.name)).attr("height", yScale.bandwidth()).attr("x", 0)
+            .attr("fill", (d, i) => barColorInterpolator(0.8 - (i / (sortedNodes.length * 1.5))))
+            .attr("width", 0);
+        bars.transition().duration(750).delay((d, i) => i * 25).attr("width", d => Math.max(0, xScale(d.value)));
+        bars.append("title").text(d => `${d.name}: ${d.value.toLocaleString()} occurrences`);
+
+        console.log("Top Ingredients Bar chart rendered.");
+    }
+
+
+    // Renders Network Graph with STRONGER repulsion and collision
     function renderNetwork({ nodes, links }) {
         console.log("Rendering Network Graph (Attempting stronger separation)...");
         netG.selectAll("*").remove();
@@ -424,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr("class", "network-link")
             .attr("stroke-width", d => Math.max(1, Math.sqrt(d.value || 1) / 2));
 
-        const nodeRadius = 8; // Maybe slightly larger nodes help visualize collision
+        const nodeRadius = 8;
         const node = netG.append("g").attr("class", "network-nodes")
             .selectAll("g").data(nodes).join("g")
             .attr("class", "network-node").style("cursor", "grab");
@@ -434,35 +567,29 @@ document.addEventListener('DOMContentLoaded', () => {
         node.append("text").text(d => d.id).attr("x", nodeRadius + 3).attr("y", 3);
         node.append("title").text(d => d.id);
 
-        // --- Force Simulation Setup (STRONGER REPULSION/COLLISION) ---
+        // --- Force Simulation Setup ---
         if (forceSimulation) forceSimulation.stop();
 
         forceSimulation = d3.forceSimulation(nodes)
-            // Link force: Keep distance moderate, don't make it too strong initially
             .force("link", d3.forceLink(links)
                 .id(d => d.id)
-                .distance(60) // Moderate distance (try 50-80)
-                .strength(0.5) // Moderate strength (try 0.4-0.7)
+                .distance(60)
+                .strength(0.5)
             )
-            // Charge force: **SIGNIFICANTLY INCREASE** repulsion
             .force("charge", d3.forceManyBody()
-                .strength(-400) // **MUCH STRONGER** repulsion (try -300 to -800)
-                .distanceMax(networkWidth / 2) // Limit repulsion range to avoid edge effects
+                .strength(-400)
+                .distanceMax(networkWidth / 2)
             )
-            // Collision force: Ensure it's strong enough
             .force("collide", d3.forceCollide()
-                .radius(nodeRadius + 3) // **Increase padding slightly**
-                .strength(0.9) // **Make collision strong** (try 0.7-1.0)
+                .radius(nodeRadius + 3)
+                .strength(0.9)
             )
-            // Center force: Keep this relatively weak compared to repulsion
-            .force("center", d3.forceCenter(networkWidth / 2, networkHeight / 2)
-                // .strength(0.05) // You can explicitly set center strength if needed (default is usually okay)
-                )
+            .force("center", d3.forceCenter(networkWidth / 2, networkHeight / 2))
             .on("tick", ticked);
 
         node.call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended));
 
-        // --- Simulation Tick/Drag Functions (Keep bounds checking in ticked) ---
+        // --- Simulation Tick/Drag Functions ---
         function ticked() {
             link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
                 .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
@@ -472,7 +599,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 Math.max(nodeRadius, Math.min(networkHeight - nodeRadius, d.y)) // Keep Y within bounds
             })`);
         }
-        // Keep dragstarted, dragged, dragended the same as before
         function dragstarted(event, d) { if (!event.active) forceSimulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; d3.select(this).raise().style("cursor", "grabbing"); }
         function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
         function dragended(event, d) { if (!event.active) forceSimulation.alphaTarget(0); d.fx = null; d.fy = null; d3.select(this).style("cursor", "grab"); }
@@ -480,10 +606,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Network Graph Rendered with stronger separation forces.");
     }
 
+
     // Renders Top Pairs Bar Chart
      function renderPairsBarChart({ sortedPairs }) {
         console.log("Rendering Top Pairs Bar chart...");
-        // Clearing and visibility handled by renderCurrentChart/updateSvgDimensions
+        pairBarG.selectAll("*").remove(); // Clear only Pair group
 
         if (!sortedPairs?.length) { displayInfoMessage("No pair data."); return; }
 
@@ -499,16 +626,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Draw Axes
         pairBarG.append("g").attr("class", "x axis").attr("transform", `translate(0,${pairBarChartHeight})`).call(xAxis)
             .selectAll("text").style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-45)");
-        pairBarG.append("g").attr("class", "y axis").call(yAxis);
+        pairBarG.append("g").attr("class", "y axis").call(yAxis)
+        .selectAll("text")
+        .style("font-size", "15px");
 
         // Axis Labels
-        pairBarG.append("text").attr("class", "axis-label x-axis-title").attr("text-anchor", "middle").attr("x", pairBarChartWidth / 2).attr("y", pairBarChartHeight + pairBarChartMargin.bottom * 0.6).text("Co-occurrence Strength (Value)");
-        pairBarG.append("text").attr("class", "axis-label y-axis-title").attr("text-anchor", "middle").attr("transform", `translate(${-pairBarChartMargin.left / 1.3}, ${pairBarChartHeight / 2}) rotate(-90)`).text("Ingredient Pair");
+        pairBarG.append("text").attr("class", "axis-label x-axis-title").attr("text-anchor", "middle").attr("x", pairBarChartWidth / 2).attr("y", pairBarChartHeight + pairBarChartMargin.bottom * 0.7).text("Co-occurrence Strength (Value)").style("font-size", "14px"); // Adjusted Y
+        pairBarG.append("text").attr("class", "axis-label y-axis-title").attr("text-anchor", "middle").attr("transform", `translate(${-pairBarChartMargin.left / 1.4}, ${pairBarChartHeight / 2}) rotate(-90)`).text("Ingredient Pair").style("font-size", "14px"); // Adjusted X
 
         // Draw Bars
         const bars = pairBarG.selectAll(".bar").data(sortedPairs).enter().append("rect").attr("class", "bar")
             .attr("y", d => yScale(d.pairLabel)).attr("height", yScale.bandwidth()).attr("x", 0)
-            .attr("fill", (d, i) => d3.interpolateBlues(1 - i / (sortedPairs.length * 1.5))) // Use a gradient
+            .attr("fill", (d, i) => d3.interpolateBlues(1 - i / (sortedPairs.length * 1.5)))
             .attr("width", 0);
         bars.transition().duration(750).delay((d, i) => i * 20).attr("width", d => Math.max(0, xScale(d.value)));
         bars.append("title").text(d => `${d.pairLabel}: ${d.value.toLocaleString()}`);
@@ -516,127 +645,125 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Top Pairs Bar chart rendered.");
     }
 
+
     // --- Interactivity & Highlighting ---
+    // (setupHEBInteractivity, highlightNodes, clearHighlight - unchanged)
+    // --- Interactivity Functions ---
+    function setupHEBInteractivity(linkSelection, nodeSelection) {
+        // Handles hover effects specifically for the HEB chart
+        console.log("Setting up HEB Interactivity (Preserve Color)...");
 
-        // --- Interactivity Functions ---
-        // --- Interactivity Functions ---
-function setupHEBInteractivity(linkSelection, nodeSelection) {
-    // Handles hover effects specifically for the HEB chart
-    console.log("Setting up HEB Interactivity (Preserve Color)...");
+        if (!linkSelection || !nodeSelection || linkSelection.empty() || nodeSelection.empty()) {
+            console.warn("setupHEBInteractivity: Invalid or empty selections provided.");
+            return;
+        }
 
-    if (!linkSelection || !nodeSelection || linkSelection.empty() || nodeSelection.empty()) {
-        console.warn("setupHEBInteractivity: Invalid or empty selections provided.");
-        return;
-    }
+        // --- Link Hover ---
+        linkSelection
+            .on("mouseover.heb", function (event, d) {
+                const sourceName = d.source;
+                const targetName = d.target;
 
-    // --- Link Hover ---
-    linkSelection
-        .on("mouseover.heb", function (event, d) {
-            const sourceName = d.source;
-            const targetName = d.target;
+                // Dim all other links and nodes
+                linkSelection.style("stroke-opacity", 0.1); // Dim links
+                nodeSelection.style("opacity", 0.2);     // Dim nodes (affects circle and text)
 
-            // Dim all other links and nodes
-            linkSelection.style("stroke-opacity", 0.1); // Dim links
-            nodeSelection.style("opacity", 0.2);     // Dim nodes (affects circle and text)
+                // Enhance the hovered link (brighter, slightly thicker)
+                d3.select(this)
+                    .style("stroke-opacity", 0.9) // Make it almost fully opaque
+                    .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Slightly thicker
+                    .raise(); // Bring to front
 
-            // Enhance the hovered link (brighter, slightly thicker)
-            d3.select(this)
-                .style("stroke-opacity", 0.9) // Make it almost fully opaque
-                .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Slightly thicker
-                .raise(); // Bring to front
+                // Enhance connected nodes (fully opaque, maybe slightly bolder text/stroke)
+                nodeSelection.filter(nd => nd.data.name === sourceName || nd.data.name === targetName)
+                    .style("opacity", 1.0) // Make fully opaque
+                    .select("circle")
+                        .style("stroke-width", 2.0) // Slightly thicker circle stroke
+                        .style("stroke", "#333"); // Ensure stroke color is visible (if needed)
+                nodeSelection.filter(nd => nd.data.name === sourceName || nd.data.name === targetName)
+                    .select("text")
+                        .style("font-weight", "bold"); // Make text bold
 
-            // Enhance connected nodes (fully opaque, maybe slightly bolder text/stroke)
-            nodeSelection.filter(nd => nd.data.name === sourceName || nd.data.name === targetName)
-                .style("opacity", 1.0) // Make fully opaque
-                .select("circle")
-                    .style("stroke-width", 2.0) // Slightly thicker circle stroke
-                    .style("stroke", "#333"); // Ensure stroke color is visible (if needed)
-            nodeSelection.filter(nd => nd.data.name === sourceName || nd.data.name === targetName)
-                .select("text")
-                    .style("font-weight", "bold"); // Make text bold
+            })
+            .on("mouseout.heb", function () {
+                // Restore default styles for ALL links and nodes in the HEB group
+                linkSelection
+                    .style("stroke-opacity", 0.6) // Restore original opacity
+                    .style("stroke-width", dd => Math.min(8, Math.max(1, Math.sqrt(dd.value)))); // Restore original width
 
-        })
-        .on("mouseout.heb", function () {
-            // Restore default styles for ALL links and nodes in the HEB group
-            linkSelection
-                .style("stroke-opacity", 0.6) // Restore original opacity
-                .style("stroke-width", dd => Math.min(8, Math.max(1, Math.sqrt(dd.value)))); // Restore original width
-
-            nodeSelection
-                .style("opacity", 1.0) // Restore original opacity
-                .select("circle")
-                    .style("stroke-width", 1) // Restore original stroke width
-                    .style("stroke", "#333"); // Restore original stroke color (if changed)
-            nodeSelection
-                .select("text")
-                    .style("font-weight", "400"); // Restore original font weight
-        });
-
-    // --- Node Hover ---
-    nodeSelection
-        .on("mouseover.heb", function(event, d) {
-            const nodeName = d.data.name;
-
-            // Dim all links and nodes initially
-            linkSelection.style("stroke-opacity", 0.1);
-            nodeSelection.style("opacity", 0.2);
-
-            // Enhance the hovered node itself
-            const currentNode = d3.select(this);
-            currentNode
-                .style("opacity", 1.0) // Fully opaque
-                .raise(); // Bring group to front
-            currentNode.select("circle")
-                .style("stroke-width", 2.5) // Boldest circle stroke
-                .style("stroke", "#000"); // Black stroke for primary node
-            currentNode.select("text")
-                .style("font-weight", "bold"); // Boldest text
-
-            // Find and enhance connected links and neighbor nodes
-            const connectedNodeNames = new Set();
-            const connectedLinkElements = []; // Store elements directly
-
-            linkSelection.each(function(ld) { // ld is link data {source, target, value}
-                let linkConnected = false;
-                if (ld.source === nodeName) { connectedNodeNames.add(ld.target); linkConnected = true; }
-                if (ld.target === nodeName) { connectedNodeNames.add(ld.source); linkConnected = true; }
-                if (linkConnected) connectedLinkElements.push(this); // Add the link DOM element
+                nodeSelection
+                    .style("opacity", 1.0) // Restore original opacity
+                    .select("circle")
+                        .style("stroke-width", 1) // Restore original stroke width
+                        .style("stroke", "#333"); // Restore original stroke color (if changed)
+                nodeSelection
+                    .select("text")
+                        .style("font-weight", "400"); // Restore original font weight
             });
 
-            // Enhance connected links
-            d3.selectAll(connectedLinkElements)
-                .style("stroke-opacity", 0.9) // Brighter
-                .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Thicker
-                .raise();
+        // --- Node Hover ---
+        nodeSelection
+            .on("mouseover.heb", function(event, d) {
+                const nodeName = d.data.name;
 
-            // Enhance neighbor nodes (slightly less than primary)
-            nodeSelection.filter(nd => connectedNodeNames.has(nd.data.name))
-                .style("opacity", 1.0) // Fully opaque
-                .select("circle")
-                    .style("stroke-width", 2.0) // Slightly thicker stroke
-                    .style("stroke", "#333");
-            nodeSelection.filter(nd => connectedNodeNames.has(nd.data.name))
-                .select("text")
-                    .style("font-weight", "500"); // Semi-bold
-        })
-        .on("mouseout.heb", function() {
-             // Restore default styles for ALL links and nodes (same as link mouseout)
-             linkSelection
-                .style("stroke-opacity", 0.6)
-                .style("stroke-width", dd => Math.min(8, Math.max(1, Math.sqrt(dd.value))));
-             nodeSelection
-                .style("opacity", 1.0)
-                .select("circle")
-                    .style("stroke-width", 1)
-                    .style("stroke", "#333");
-            nodeSelection
-                .select("text")
-                    .style("font-weight", "400");
-        });
-    console.log("HEB Interactivity setup complete (Preserve Color).");
-}
-    
-        // ... rest of the highlightNodes, clearHighlight etc. ...
+                // Dim all links and nodes initially
+                linkSelection.style("stroke-opacity", 0.1);
+                nodeSelection.style("opacity", 0.2);
+
+                // Enhance the hovered node itself
+                const currentNode = d3.select(this);
+                currentNode
+                    .style("opacity", 1.0) // Fully opaque
+                    .raise(); // Bring group to front
+                currentNode.select("circle")
+                    .style("stroke-width", 2.5) // Boldest circle stroke
+                    .style("stroke", "#000"); // Black stroke for primary node
+                currentNode.select("text")
+                    .style("font-weight", "bold"); // Boldest text
+
+                // Find and enhance connected links and neighbor nodes
+                const connectedNodeNames = new Set();
+                const connectedLinkElements = []; // Store elements directly
+
+                linkSelection.each(function(ld) { // ld is link data {source, target, value}
+                    let linkConnected = false;
+                    if (ld.source === nodeName) { connectedNodeNames.add(ld.target); linkConnected = true; }
+                    if (ld.target === nodeName) { connectedNodeNames.add(ld.source); linkConnected = true; }
+                    if (linkConnected) connectedLinkElements.push(this); // Add the link DOM element
+                });
+
+                // Enhance connected links
+                d3.selectAll(connectedLinkElements)
+                    .style("stroke-opacity", 0.9) // Brighter
+                    .style("stroke-width", dd => Math.min(10, Math.max(1.5, Math.sqrt(dd.value) * 1.5))) // Thicker
+                    .raise();
+
+                // Enhance neighbor nodes (slightly less than primary)
+                nodeSelection.filter(nd => connectedNodeNames.has(nd.data.name))
+                    .style("opacity", 1.0) // Fully opaque
+                    .select("circle")
+                        .style("stroke-width", 2.0) // Slightly thicker stroke
+                        .style("stroke", "#333");
+                nodeSelection.filter(nd => connectedNodeNames.has(nd.data.name))
+                    .select("text")
+                        .style("font-weight", "500"); // Semi-bold
+            })
+            .on("mouseout.heb", function() {
+                 // Restore default styles for ALL links and nodes (same as link mouseout)
+                 linkSelection
+                    .style("stroke-opacity", 0.6)
+                    .style("stroke-width", dd => Math.min(8, Math.max(1, Math.sqrt(dd.value))));
+                 nodeSelection
+                    .style("opacity", 1.0)
+                    .select("circle")
+                        .style("stroke-width", 1)
+                        .style("stroke", "#333");
+                nodeSelection
+                    .select("text")
+                        .style("font-weight", "400");
+            });
+        console.log("HEB Interactivity setup complete (Preserve Color).");
+    }
 
     // Main highlight function called by search input
     function highlightNodes(searchTerm) {
@@ -647,41 +774,49 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
         if (!term) return; // Stop if search is empty
 
         let nodesToHighlight = new Set();
-        let neighborsToHighlight = new Set(); // Use a different name for clarity
-        let linksToHighlight = new Set();
+        let neighborsToHighlight = new Set();
+        let linksToHighlight = new Set(); // Store link DOM elements
 
         // --- Apply Highlighting based on Active Chart ---
         if (currentChartType === 'heb') {
-            const allNodes = g.selectAll(".node");
-            const allLinks = g.selectAll(".link");
+            const allNodes = g.selectAll(".node"); // Select the <g class='node'> groups
+            const allLinks = g.selectAll(".link"); // Select the <path class='link'> elements
 
             allNodes.each(function(d) { if (d.data.name?.toLowerCase().includes(term)) nodesToHighlight.add(d.data.name); });
 
             if (nodesToHighlight.size > 0) {
-                allNodes.classed("dimmed", true); allLinks.classed("dimmed", true); // Dim all
+                allNodes.classed("dimmed", true);
+                allLinks.classed("dimmed", true); // Dim all
 
                 allLinks.each(function(d) { // d is link data {source, target, value}
                     let linkConnected = false;
                     if (nodesToHighlight.has(d.source)) { neighborsToHighlight.add(d.target); linkConnected = true; }
                     if (nodesToHighlight.has(d.target)) { neighborsToHighlight.add(d.source); linkConnected = true; }
-                    if (linkConnected) linksToHighlight.add(this); // Add the DOM element
+                    if (linkConnected) linksToHighlight.add(this); // Add the link DOM element
                 });
 
                 nodesToHighlight.forEach(name => neighborsToHighlight.delete(name)); // Exclude self from neighbors
 
-                allNodes.filter(d => nodesToHighlight.has(d.data.name)).classed("dimmed", false).classed("highlighted", true).raise();
-                allNodes.filter(d => neighborsToHighlight.has(d.data.name)).classed("dimmed", false).classed("highlighted-neighbor", true);
-                d3.selectAll(Array.from(linksToHighlight)).classed("dimmed", false).classed("highlighted", true).raise(); // Apply to selected link elements
+                // Apply classes to nodes
+                allNodes.filter(d => nodesToHighlight.has(d.data.name))
+                        .classed("dimmed", false).classed("highlighted", true).raise();
+                allNodes.filter(d => neighborsToHighlight.has(d.data.name))
+                        .classed("dimmed", false).classed("highlighted-neighbor", true);
+
+                // Apply classes directly to the selected link elements
+                d3.selectAll(Array.from(linksToHighlight))
+                  .classed("dimmed", false).classed("highlighted", true).raise();
             }
 
         } else if (currentChartType === 'network') {
-            const allNodes = netG.selectAll(".network-node");
-            const allLinks = netG.selectAll(".network-link");
+            const allNodes = netG.selectAll(".network-node"); // Select the <g class='network-node'> groups
+            const allLinks = netG.selectAll(".network-link"); // Select the <line class='network-link'> elements
 
             allNodes.each(function(d) { if (d.id?.toLowerCase().includes(term)) nodesToHighlight.add(d.id); });
 
             if (nodesToHighlight.size > 0) {
-                allNodes.classed("dimmed", true); allLinks.classed("dimmed", true);
+                allNodes.classed("dimmed", true);
+                allLinks.classed("dimmed", true);
 
                 allLinks.each(function(d) { // d is link data {source, target, value} -> source/target might be objects or ids
                     const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
@@ -694,37 +829,51 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
 
                 nodesToHighlight.forEach(id => neighborsToHighlight.delete(id));
 
-                allNodes.filter(d => nodesToHighlight.has(d.id)).classed("dimmed", false).classed("highlighted", true).raise();
-                allNodes.filter(d => neighborsToHighlight.has(d.id)).classed("dimmed", false).classed("highlighted-neighbor", true);
-                 d3.selectAll(Array.from(linksToHighlight)).classed("dimmed", false).classed("highlighted", true).raise();
+                // Apply classes to nodes
+                allNodes.filter(d => nodesToHighlight.has(d.id))
+                        .classed("dimmed", false).classed("highlighted", true).raise();
+                allNodes.filter(d => neighborsToHighlight.has(d.id))
+                        .classed("dimmed", false).classed("highlighted-neighbor", true);
+
+                // Apply classes directly to the selected link elements
+                 d3.selectAll(Array.from(linksToHighlight))
+                   .classed("dimmed", false).classed("highlighted", true).raise();
             }
 
         } else if (currentChartType === 'bar' || currentChartType === 'pairs-bar') {
             const targetGroup = (currentChartType === 'bar') ? barG : pairBarG;
-            const allBars = targetGroup.selectAll(".bar");
-            const allYAxisLabels = targetGroup.selectAll(".y.axis .tick text");
+            const allBars = targetGroup.selectAll(".bar"); // Select the <rect class='bar'>
+            const allYAxisTicks = targetGroup.selectAll(".y.axis .tick"); // Select the <g class='tick'>
 
             allBars.classed("dimmed", true);
-            allYAxisLabels.classed("dimmed", true); // Dim labels too
+            allYAxisTicks.classed("dimmed", true); // Dim the entire tick group first
 
+            // Highlight matching bars
             allBars.filter(d => {
                 const label = (currentChartType === 'bar') ? d.name : d.pairLabel;
                 return label?.toLowerCase().includes(term);
             }).classed("dimmed", false).classed("highlighted", true);
 
-            allYAxisLabels.filter(labelName => labelName?.toLowerCase().includes(term))
-               .classed("dimmed", false).classed("highlighted", true);
+            // Find matching ticks and apply highlight class to the TEXT inside them
+            allYAxisTicks.filter(labelName => labelName?.toLowerCase().includes(term))
+               .classed("dimmed", false) // Undim the tick group
+               .select("text")           // Select the text within the matching tick
+               .classed("highlighted", true); // Add highlight class TO THE TEXT
         }
          console.log(`Applied highlight for "${term}". Found: ${nodesToHighlight.size} primary, ${neighborsToHighlight.size} neighbors, ${linksToHighlight.size} links.`);
     }
 
+
     // Clears all highlight styles and optionally the search input
     function clearHighlight(clearInput = true) {
         console.log("Clearing highlights...");
+        // Remove highlight classes from all potential elements
         svg.selectAll(".highlighted, .highlighted-neighbor, .dimmed")
            .classed("highlighted highlighted-neighbor dimmed", false);
-        // Remove any direct style overrides if used (safer to rely on classes)
-        // svg.selectAll("[style*='opacity'], [style*='stroke']").attr("style", null);
+
+        // Specifically ensure axis text highlighting is removed
+        svg.selectAll(".y.axis .tick text.highlighted").classed("highlighted", false);
+        svg.selectAll(".y.axis .tick.dimmed").classed("dimmed", false); // Undim tick groups
 
         if (clearInput) {
             searchInput.node().value = '';
@@ -748,25 +897,25 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
         return null; // Prune branch if no children survive
     }
 
-
     // --- UI Helper Functions ---
+    // (updateTitle, setLoadingState, displayErrorMessage, displayInfoMessage, clearVisualization, setActiveButton - unchanged)
+
     function updateTitle(text) { controls.select("h1").text(text); }
 
     function setLoadingState(isLoading, cuisineName = '') {
-        // Select potentially existing indicator
         const loadingIndicator = container.select(".loading-indicator");
 
         if (isLoading) {
             updateTitle(`Loading ${cuisineName}...`);
-            container.style("opacity", 0.5); // Dim container
-            // Create indicator if it doesn't exist
+            clearVisualization(); // Clear previous content before showing loading
+            container.style("opacity", 0.5); // Dim container slightly
+
             if (loadingIndicator.empty()) {
-                container.append("div").attr("class", "loading-indicator")
-                    .style("position", "absolute").style("top", "50%").style("left", "50%")
-                    .style("transform", "translate(-50%, -50%)").style("font-size", "1.5em")
-                    .style("color", "#555").text("Loading...");
+                 container.append("div")
+                    .attr("class", "loading-indicator") // Use CSS class for styling
+                    .text("Loading...");
             }
-             container.select(".loading-indicator").style("display", "block"); // Show it
+            container.select(".loading-indicator").style("display", "block"); // Show it
         } else {
             container.style("opacity", 1); // Restore opacity
             container.select(".loading-indicator").remove(); // Remove when done
@@ -775,36 +924,42 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
 
     function displayErrorMessage(message) {
         clearVisualization(); // Clear drawings first
-        const targetGroup = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barG : pairBarG) : (currentChartType === 'network' ? netG : g);
-        const targetWidth = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartWidth : pairBarChartWidth) : networkWidth;
-        const targetHeight = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartHeight : pairBarChartHeight) : networkHeight;
+        updateTitle("Error"); // Optional: Change main title on error
 
-        targetGroup.selectAll("*").remove(); // Clear only target group
+        const targetGroup = (currentChartType === 'heb') ? g :
+                            (currentChartType === 'network') ? netG :
+                            (currentChartType === 'bar') ? barG :
+                            (currentChartType === 'pairs-bar') ? pairBarG : svg; // Fallback
 
-        targetGroup.append("text")
-            .attr("class", "error-message") // Use CSS class
-            .attr("x", (currentChartType === 'heb') ? 0 : targetWidth / 2) // Centering depends on group transform
-            .attr("y", (currentChartType === 'heb') ? 0 : targetHeight / 2)
-            .attr("text-anchor", "middle").attr("dy", "0.35em")
+        // Add message centered within the main SVG container
+        // Remove any existing messages first
+        container.selectAll(".error-message, .info-message").remove();
+        container.append("div")
+            .attr("class", "error-message") // Use CSS class for styling
             .text(message);
-        // updateTitle("Error"); // Optional: Change main title on error
+
+        // Also clear the specific chart group just in case
+        targetGroup.selectAll("*").remove();
     }
 
      function displayInfoMessage(message) {
         clearVisualization(); // Clear drawings first
-         const targetGroup = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barG : pairBarG) : (currentChartType === 'network' ? netG : g);
-        const targetWidth = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartWidth : pairBarChartWidth) : networkWidth;
-        const targetHeight = (currentChartType === 'bar' || currentChartType === 'pairs-bar') ? (currentChartType === 'bar' ? barChartHeight : pairBarChartHeight) : networkHeight;
 
-        targetGroup.selectAll("*").remove(); // Clear only target group
+        const targetGroup = (currentChartType === 'heb') ? g :
+                            (currentChartType === 'network') ? netG :
+                            (currentChartType === 'bar') ? barG :
+                            (currentChartType === 'pairs-bar') ? pairBarG : svg; // Fallback
 
-        targetGroup.append("text")
-            .attr("class", "info-message") // Use CSS class
-             .attr("x", (currentChartType === 'heb') ? 0 : targetWidth / 2)
-            .attr("y", (currentChartType === 'heb') ? 0 : targetHeight / 2)
-            .attr("text-anchor", "middle").attr("dy", "0.35em")
-            .text(message);
+        // Add message centered within the main SVG container
+        container.selectAll(".error-message, .info-message").remove();
+        container.append("div")
+             .attr("class", "info-message") // Use CSS class for styling
+             .text(message);
+
+        // Also clear the specific chart group
+        targetGroup.selectAll("*").remove();
     }
+
 
     function clearVisualization(message = "") {
         // Clear drawing content from ALL groups
@@ -813,11 +968,15 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
         pairBarG.selectAll("*").remove();
         netG.selectAll("*").remove();
 
-        // Remove loading indicator if present
-        container.select(".loading-indicator").remove();
+        // Remove messages or loading indicators positioned in the container div
+        container.selectAll(".loading-indicator, .error-message, .info-message").remove();
 
-        if (message && !currentCuisineData) {
-            displayInfoMessage(message); // Show initial/info message
+        if (message) { // Only show message if provided
+             // Check if it's the initial state (no cuisine selected)
+             const cuisineSelected = document.getElementById("cuisine-select")?.value;
+             if (!cuisineSelected || !currentCuisineData) {
+                displayInfoMessage(message); // Show initial/info message using the helper
+             }
         }
     }
 
@@ -825,6 +984,7 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
         chartButtonsContainer.selectAll("button").classed("active", false);
         chartButtonsContainer.select(`#${activeButtonId}`).classed("active", true);
     }
+
 
     // --- Event Listeners ---
 
@@ -838,7 +998,6 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
     chartButtonsContainer.selectAll("button").on("click", function() {
         const buttonId = d3.select(this).attr("id");
         let newChartType = '';
-        // Map button IDs to chart types
         switch (buttonId) {
             case 'heb-button': newChartType = 'heb'; break;
             case 'network-button': newChartType = 'network'; break;
@@ -850,8 +1009,22 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
         if (newChartType !== currentChartType) {
             console.log(`Switching chart type to: ${newChartType}`);
             if (forceSimulation) { forceSimulation.stop(); forceSimulation = null; } // Stop sim if leaving network
+            // Detach zoom handler if switching AWAY from HEB (optional, but cleaner)
+            // if (currentChartType === 'heb' && newChartType !== 'heb') {
+            //    svg.on('.zoom', null); // Remove all zoom listeners
+            // }
+
             currentChartType = newChartType;
             setActiveButton(buttonId);
+
+            // Re-attach zoom handler if switching TO HEB
+            // if (currentChartType === 'heb') {
+            //     svg.call(zoom).on("dblclick.zoom", null);
+            // } else {
+            //     // Ensure zoom is disabled for other charts if needed
+            //     svg.on('.zoom', null); // Or selectively disable pan/zoom interaction
+            // }
+
             renderCurrentChart(); // Update dimensions and render
             clearHighlight(); // Clear search on chart switch
         }
@@ -859,7 +1032,6 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
 
     // Search Input
     searchInput.on("input", function() {
-        // Use debounce if performance becomes an issue on large datasets
         highlightNodes(this.value);
     });
 
@@ -869,13 +1041,13 @@ function setupHEBInteractivity(linkSelection, nodeSelection) {
     // Resize Listener
     let resizeTimer;
     window.addEventListener("resize", () => {
-        clearTimeout(resizeTimer); // Debounce resize event
+        clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             console.log("Window resized, updating layout...");
              if (forceSimulation) forceSimulation.stop(); // Stop sim during resize
-            updateSvgDimensions(); // Update layout/sizes
-            renderCurrentChart(); // Re-render the active chart
-        }, 250); // Adjust debounce delay as needed
+            updateSvgDimensions(); // Update layout/sizes AND recalculate HEB center if active
+            renderCurrentChart(); // Re-render the active chart with new dimensions
+        }, 250);
     });
 
     // --- Initial Load ---

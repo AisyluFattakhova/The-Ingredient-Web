@@ -80,14 +80,18 @@ body {
 
 /* --- Chart Container --- */
 #chart-container {
-  width: 95%;
+  overflow: visible; /* Allow visualization to extend */
+  width: 100%;
   max-width: 1200px; /* Limit maximum width */
   margin: 25px auto; /* Center container with vertical margin */
   position: relative; /* Needed for positioning messages */
   border: 1px solid #dee2e6; /* Container border */
   box-sizing: border-box;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); /* Subtle shadow */
-  background-color: #fff; /* White background for chart area */
+  background-color: #fff;
+  padding: 20px; /* Add padding inside container */
+  min-height: 700px; /* Set minimum height */
+  overflow: hidden; 
   /* Height is set dynamically in JS */
 }
 
@@ -198,17 +202,10 @@ body {
   border: 1px solid #ced4da; /* Subtle border */
   box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
 }
+svg {
+  display: block; /* Remove default inline spacing */
+}
 
-.error-message {
-   color: #dc3545; /* Bootstrap danger red */
-   border-color: #f5c6cb;
-   background-color: #f8d7da; /* Light red background */
-}
-.info-message {
-  color: #6c757d; /* Bootstrap secondary gray */
-  border-color: #ced4da;
-  background-color: #e9ecef; /* Light gray background */
-}
 
 /* --- Highlight Styles (Applied by JS during Search) --- */
 
@@ -333,5 +330,64 @@ body {
    font-weight: normal !important;
    stroke: none !important;
 }
+/* In style.css, find and modify/remove this rule */
+#heb-controls {
+  /* REMOVE or comment out these lines:
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(255,255,255,0.8);
+  padding: 5px;
+  border-radius: 5px; */
 
+  /* Add back some margin if needed, or let it be handled by parent */
+  margin-top: 10px; /* Example: add some space above */
+  text-align: center; /* Center the remaining button */
+}
+
+/* You might not need this rule anymore if there's only one button */
+/*
+#heb-controls button {
+  margin: 0 3px;
+  min-width: 30px;
+}
+*/
+#heb-controls button {
+  margin: 0 3px;
+  min-width: 30px;
+}
 /* --- End of Highlight Styles --- */
+/* --- Chart Container --- */
+
+
+/* --- Loading/Error/Info Messages --- */
+.loading-indicator, .error-message, .info-message {
+  position: absolute; /* Position relative to #chart-container */
+  top: 45%; /* Adjust vertical centering */
+  left: 50%;
+  transform: translate(-50%, -50%); /* Center horizontally and vertically */
+  /* --- Styling (keep or adjust) --- */
+  font-size: 1.2em;
+  color: #495057;
+  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+  padding: 15px 25px;
+  border-radius: 5px;
+  text-align: center;
+  z-index: 10; /* Ensure above SVG */
+  border: 1px solid #ced4da;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Specific colors (keep these) */
+.error-message {
+   color: #dc3545;
+   border-color: #f5c6cb;
+   background-color: #f8d7da;
+}
+.info-message {
+  color: #6c757d;
+  border-color: #ced4da;
+  background-color: #e9ecef;
+}
