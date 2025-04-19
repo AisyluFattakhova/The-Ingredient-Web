@@ -13,33 +13,31 @@
                 <option value="">Loading cuisines...</option>
             </select>
             <!-- Search Feature -->
-            <input type="text" id="search-input" placeholder="Search ingredient...">
+            <input type="text" id="search-input" placeholder="Search ingredient/category...">
             <button id="clear-highlight-button">Clear</button>
         </div>
-                <!-- Inside the #controls div -->
-                <div id="heb-controls" class="mt-3">
-                  <!-- REMOVED: Zoom In, Zoom Out, Pan buttons -->
-                  <button id="reset-view" class="btn btn-sm btn-outline-secondary">Reset View</button>
-                  <!-- Make sure this div is still styled appropriately or remove it if empty -->
-                </div>
-
+        <!-- Inside the #controls div -->
+        <div id="heb-controls" class="mt-3">
+          <!-- Reset button only relevant for HEB zoom -->
+          <button id="reset-view" class="btn btn-sm btn-outline-secondary">Reset HEB View</button>
+        </div>
 
         <!-- Chart Type Buttons -->
         <div id="chart-buttons">
             <button id="heb-button" class="chart-button active">Edge Bundling</button>
-            <button id="network-button" class="chart-button">Network Graph</button>
             <button id="bar-button" class="chart-button">Top Ingredients</button>
             <button id="pairs-bar-button" class="chart-button">Top Pairs</button>
-            <!-- Add more buttons here -->
+            <button id="matrix-button">Adj. Matrix (Top 15)</button>
         </div>
     </div>
 
     <div id="chart-container">
         <!-- SVG will be appended here -->
+        <!-- Loading/Error messages will be appended here as divs -->
     </div>
 
     <script>
-        // Load Cuisines Dropdown (same as before)
+        // Load Cuisines Dropdown (Unchanged)
         async function loadCuisines() {
           const select = document.getElementById("cuisine-select");
           try {
@@ -62,7 +60,7 @@
     </script>
 
     <!-- Load the main visualization script -->
-    <script src="/static/heb.js"></script> <!-- Renamed JS file -->
+    <script src="/static/heb.js"></script> <!-- Ensure this points to your JS file -->
 
 </body>
 </html>

@@ -6,15 +6,15 @@ body {
   margin: 0;
   padding: 0;
   color: #333;
-  background-color: #fdfdff; /* Very light page background */
+  background-color: #fdfdff;
 }
 
 /* --- Controls Area --- */
 #controls {
   padding: 15px;
   text-align: center;
-  background-color: #f8f9fa; /* Light background for controls */
-  border-bottom: 1px solid #dee2e6; /* Subtle separator */
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -22,7 +22,7 @@ body {
   margin-top: 0;
   margin-bottom: 15px;
   font-size: 1.8em;
-  color: #495057; /* Dark gray heading */
+  color: #495057;
 }
 
 #selection-controls {
@@ -30,14 +30,14 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
-  gap: 10px; /* Consistent spacing between controls */
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 #controls select,
 #search-input {
   padding: 8px 12px;
-  border: 1px solid #ced4da; /* Standard input border */
+  border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 1em;
   min-width: 150px;
@@ -52,12 +52,13 @@ body {
 }
 
 #chart-buttons button,
-#clear-highlight-button {
+#clear-highlight-button,
+#heb-controls button {
   margin: 0 5px;
   padding: 8px 15px;
   cursor: pointer;
-  border: 1px solid #adb5bd; /* Slightly darker border than inputs */
-  background-color: #e9ecef; /* Light gray button */
+  border: 1px solid #adb5bd;
+  background-color: #e9ecef;
   color: #495057;
   border-radius: 4px;
   font-size: 0.9em;
@@ -65,322 +66,196 @@ body {
 }
 
 #chart-buttons button:hover,
-#clear-highlight-button:hover {
-  background-color: #dee2e6; /* Darken slightly on hover */
+#clear-highlight-button:hover,
+#heb-controls button:hover {
+  background-color: #dee2e6;
   border-color: #6c757d;
 }
 
 #chart-buttons button.active {
-  background-color: #007bff; /* Primary blue for active button */
+  background-color: #007bff;
   color: white;
   font-weight: bold;
-  border-color: #0056b3; /* Darker blue border */
+  border-color: #0056b3;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 
+#heb-controls {
+  margin-top: 10px;
+  text-align: center;
+}
+/* Hide reset view button if HEB is not active (optional via JS or CSS) */
+/* Example:
+#heb-controls button { display: none; }
+body.heb-active #heb-controls button { display: inline-block; }
+*/
+
+
 /* --- Chart Container --- */
 #chart-container {
-  overflow: visible; /* Allow visualization to extend */
   width: 100%;
-  max-width: 1200px; /* Limit maximum width */
-  margin: 25px auto; /* Center container with vertical margin */
-  position: relative; /* Needed for positioning messages */
-  border: 1px solid #dee2e6; /* Container border */
+  max-width: 1200px;
+  margin: 25px auto;
+  position: relative;
+  border: 1px solid #dee2e6;
   box-sizing: border-box;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
   background-color: #fff;
-  padding: 20px; /* Add padding inside container */
-  min-height: 700px; /* Set minimum height */
-  overflow: hidden; 
-  /* Height is set dynamically in JS */
+  padding: 20px;
+  min-height: 700px;
+  overflow: hidden;
 }
+
+#chart-container svg {
+  display: block;
+}
+
 
 /* --- HEB Specific Styles --- */
-.heb-group .link { /* Target links only within HEB group */
+.heb-group .link {
   fill: none;
   stroke-opacity: 0.6;
-  stroke-linecap: round; /* Nicer line ends */
-  /* stroke and stroke-width set dynamically */
+  stroke-linecap: round;
 }
-
-.heb-group .node text { /* Target text only within HEB group */
+.heb-group .node text {
   font-family: sans-serif;
   font-size: 10px;
   fill: #333;
-  paint-order: stroke; /* Outline text */
+  paint-order: stroke;
   stroke: white;
-  stroke-width: 2.5px; /* Slightly thicker outline */
+  stroke-width: 2.5px;
   stroke-linecap: butt;
   stroke-linejoin: miter;
   pointer-events: none;
 }
-
-.heb-group .node circle { /* Target circles only within HEB group */
-  stroke: #fff; /* White outline */
+.heb-group .node circle {
+  stroke: #fff;
   stroke-width: 1px;
-  /* fill set dynamically */
 }
 
 /* --- Network Graph Specific Styles --- */
-.network-group .network-link {
-  stroke: #adb5bd; /* Lighter gray links */
+/* REMOVED - Network styles no longer needed */
+/*
+.network-group .network-link { ... }
+.network-group .network-node circle { ... }
+.network-group .network-node text { ... }
+*/
+
+
+/* --- Adjacency Matrix Styles --- */
+.matrix-group .cell {
+  stroke: #eee;
+  stroke-width: 0.5px;
+  shape-rendering: crispEdges;
+  transition: fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease; /* Added opacity transition */
+}
+.matrix-group .axis text {
+  font-size: 9px;
+  text-anchor: end;
+}
+.matrix-group .axis.x text {
+   text-anchor: start;
+}
+
+
+/* --- Arc Diagram Styles --- */
+.arc-group .arc-link {
+  fill: none;
   stroke-opacity: 0.6;
   stroke-width: 1.5px;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, stroke-opacity 0.2s ease;
 }
-
-.network-group .network-node circle {
-  stroke: #fff; /* White outline for contrast */
-  stroke-width: 1.5px;
-}
-
-.network-group .network-node text {
-  font-family: sans-serif;
-  font-size: 10px; /* Slightly larger text for network */
-  fill: #333;
-  pointer-events: none; /* Allow node dragging */
-  paint-order: stroke;
+.arc-group .arc-node circle {
+  fill: #999;
   stroke: white;
-  stroke-width: 2px;
+  stroke-width: 1px;
+  transition: fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
 }
+.arc-group .arc-node text {
+  font-size: 10px;
+  text-anchor: middle;
+  transform: rotate(-65deg);
+  dy: -8px;
+  pointer-events: none;
+  transition: fill 0.2s ease, opacity 0.2s ease;
+}
+
+/* --- Sunburst Styles --- */
+.sunburst-group path {
+  stroke: #fff; /* White lines between segments */
+  stroke-width: 0.5px;
+  cursor: pointer; /* Indicate interactivity */
+  transition: opacity 0.3s ease, fill 0.3s ease, stroke 0.3s ease, stroke-width 0.3s ease; /* Added stroke transitions */
+}
+.sunburst-group path:hover {
+  opacity: 0.85; /* Slight fade on hover */
+}
+/* Style for text label in the center (optional) */
+.sunburst-label {
+    text-anchor: middle;
+    font-size: 1.1em;
+    fill: #555;
+    pointer-events: none; /* Don't block path interaction */
+    opacity: 0; /* Controlled by JS */
+    transition: opacity 0.3s ease;
+}
+.sunburst-label-value {
+    font-weight: bold;
+    font-size: 1.3em;
+}
+
 
 /* --- Bar Chart / Pairs Bar Chart Specific Styles --- */
 .bar-group .bar,
 .pair-bar-group .bar {
-  /* fill set dynamically */
-  shape-rendering: crispEdges; /* Sharper edges */
+  shape-rendering: crispEdges;
   transition: fill 0.2s ease, opacity 0.2s ease;
 }
-
 .bar-group .bar:hover,
 .pair-bar-group .bar:hover {
-  /* Example hover effect: slightly lighter fill */
   filter: brightness(1.2);
-  /* Alternatively: fill: lightsteelblue; */
 }
-
-.axis-label { /* For titles like "Ingredient", "Occurrences" */
+.axis-label {
   font-size: 13px;
   fill: #333;
   font-family: sans-serif;
   font-weight: 500;
 }
-
 .axis path,
 .axis line {
   fill: none;
-  stroke: #ced4da; /* Lighter axis lines */
+  stroke: #ced4da;
   shape-rendering: crispEdges;
 }
-
-.axis text { /* Axis tick labels */
+.axis text {
   font-family: sans-serif;
   font-size: 10px;
-  fill: #495057; /* Dark gray text */
+  fill: #495057;
 }
-
-.x.axis text { /* Specific style for potentially rotated X axis labels */
+.x.axis text {
   text-anchor: end !important;
 }
-
-.y.axis .tick text { /* Y Axis labels (ingredients/pairs) */
-  font-size: 11px; /* Slightly larger for readability */
+.y.axis .tick text {
+  font-size: 11px;
 }
 
 /* --- Loading/Error/Info Messages --- */
 .loading-indicator, .error-message, .info-message {
   position: absolute;
-  top: 45%; /* Adjust vertical centering */
+  top: 45%;
   left: 50%;
   transform: translate(-50%, -50%);
+  min-width: 150px;
   font-size: 1.2em;
   color: #495057;
-  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white background */
+  background-color: rgba(255, 255, 255, 0.9);
   padding: 15px 25px;
   border-radius: 5px;
   text-align: center;
-  z-index: 10; /* Ensure above SVG */
-  border: 1px solid #ced4da; /* Subtle border */
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
-}
-svg {
-  display: block; /* Remove default inline spacing */
-}
-
-
-/* --- Highlight Styles (Applied by JS during Search) --- */
-
-/* Style for elements that are NOT highlighted or neighbors */
-.dimmed {
-  opacity: 0.1 !important;
-  transition: opacity 0.3s ease;
-}
-
-/* Styles for primary highlighted elements */
-.highlighted {
-  opacity: 1.0 !important;
-  stroke: #007bff !important; /* Primary highlight stroke color (blue) */
-  stroke-width: 2.5px !important;
-  /* fill/font-weight handled per element type */
-  transition: opacity 0.3s ease, stroke 0.3s ease;
-}
-
-/* Style for neighbors of highlighted elements */
-.highlighted-neighbor {
-  opacity: 0.9 !important; /* Slightly less opaque than primary */
-  stroke: #17a2b8 !important; /* Neighbor highlight stroke color (teal) */
-  stroke-width: 1.5px !important;
-  /* fill/font-weight handled per element type */
-  transition: opacity 0.3s ease, stroke 0.3s ease;
-}
-
-/* --- Text Highlighting Overrides --- */
-
-/* Text within PRIMARY highlighted GRAPH nodes (HEB, Network) */
-/* Does NOT apply to axis labels directly */
-.highlighted text {
-  opacity: 1.0 !important;
-  fill: black !important; /* Ensure high contrast */
-  font-weight: bold !important;
-  stroke: white !important; /* Maintain readability outline */
-  stroke-width: 2px !important;
-}
-
-/* Text within NEIGHBOR highlighted GRAPH nodes (HEB, Network) */
-.highlighted-neighbor text {
-  opacity: 1.0 !important;
-  fill: #333 !important; /* Dark gray, less prominent than primary */
-  font-weight: 500 !important; /* Semi-bold */
-  stroke: white !important;
-  stroke-width: 1.5px !important;
-}
-
-/* --- Specific Chart Element Highlighting --- */
-
-/* Network Graph Search Highlight */
-.network-group .network-link.highlighted {
-   stroke-width: 2.5px !important;
-   stroke-opacity: 0.9 !important;
-   /* stroke color uses .highlighted */
-}
-.network-group .network-node.highlighted circle {
-  stroke: #0056b3 !important; /* Darker blue outline */
-  fill-opacity: 1.0 !important;
-}
-.network-group .network-node.highlighted-neighbor circle {
-  stroke: #117a8b !important; /* Darker teal outline */
-  fill-opacity: 0.9 !important;
-}
-/* Network text uses generic '.highlighted text' / '.highlighted-neighbor text' rules */
-
-
-/* HEB Search Highlight */
-.heb-group .link.highlighted {
-   stroke-width: 3px !important;
-   stroke-opacity: 0.9 !important;
-    /* stroke color uses .highlighted */
-}
-.heb-group .node.highlighted circle {
-   stroke: black !important; /* Black outline for primary HEB node */
-   /* stroke-width uses .highlighted */
-   opacity: 1.0 !important;
-}
-.heb-group .node.highlighted-neighbor circle {
-   /* stroke color uses .highlighted-neighbor */
-   /* stroke-width uses .highlighted-neighbor */
-   opacity: 0.9 !important;
-}
-/* HEB text uses generic '.highlighted text' / '.highlighted-neighbor text' rules */
-
-
-/* Bar Charts Search Highlight */
-.bar-group .bar.highlighted,
-.pair-bar-group .bar.highlighted {
-  stroke: black !important; /* Outline highlighted bars */
-  stroke-width: 1.5px !important;
-  opacity: 1.0 !important;
-  fill: #007bff !important; /* Change FILL to primary highlight color */
-}
-
-/* --- Y-AXIS LABEL HIGHLIGHTING (Bar Charts) --- */
-/* Target the TEXT element within a TICK that has the HIGHLIGHTED class */
-.y.axis .tick text.highlighted {
-   opacity: 1.0 !important; /* MAKE FULLY VISIBLE */
-   fill: black !important;   /* MAKE BLACK */
-   font-weight: bold !important; /* MAKE BOLD */
-   stroke: none !important; /* Ensure no accidental stroke */
-}
-/* Target the TEXT element within a TICK that has the HIGHLIGHTED-NEIGHBOR class (if used) */
-.y.axis .tick text.highlighted-neighbor {
-   opacity: 1.0 !important; /* MAKE FULLY VISIBLE */
-   fill: #333 !important;    /* MAKE DARK GRAY */
-   font-weight: 500 !important; /* MAKE SEMI-BOLD */
-   stroke: none !important;
-}
-/* Ensure that Y axis text NOT dimmed remains visible and styled correctly*/
-.y.axis .tick text:not(.dimmed):not(.highlighted):not(.highlighted-neighbor) {
-   opacity: 1.0 !important; /* Override potential inherited low opacity from dimmed .tick */
-   fill: #495057 !important; /* Restore default axis text color */
-   font-weight: normal !important; /* Ensure not bold if previously highlighted */
-   stroke: none !important;
-}
-/* Ensure dimmed axis labels are very faint */
-.y.axis .tick text.dimmed {
-   fill: #adb5bd !important; /* Light gray */
-   opacity: 0.4 !important; /* Adjust dim level as needed */
-   font-weight: normal !important;
-   stroke: none !important;
-}
-/* In style.css, find and modify/remove this rule */
-#heb-controls {
-  /* REMOVE or comment out these lines:
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  background: rgba(255,255,255,0.8);
-  padding: 5px;
-  border-radius: 5px; */
-
-  /* Add back some margin if needed, or let it be handled by parent */
-  margin-top: 10px; /* Example: add some space above */
-  text-align: center; /* Center the remaining button */
-}
-
-/* You might not need this rule anymore if there's only one button */
-/*
-#heb-controls button {
-  margin: 0 3px;
-  min-width: 30px;
-}
-*/
-#heb-controls button {
-  margin: 0 3px;
-  min-width: 30px;
-}
-/* --- End of Highlight Styles --- */
-/* --- Chart Container --- */
-
-
-/* --- Loading/Error/Info Messages --- */
-.loading-indicator, .error-message, .info-message {
-  position: absolute; /* Position relative to #chart-container */
-  top: 45%; /* Adjust vertical centering */
-  left: 50%;
-  transform: translate(-50%, -50%); /* Center horizontally and vertically */
-  /* --- Styling (keep or adjust) --- */
-  font-size: 1.2em;
-  color: #495057;
-  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
-  padding: 15px 25px;
-  border-radius: 5px;
-  text-align: center;
-  z-index: 10; /* Ensure above SVG */
+  z-index: 10;
   border: 1px solid #ced4da;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
-
-/* Specific colors (keep these) */
 .error-message {
    color: #dc3545;
    border-color: #f5c6cb;
@@ -391,3 +266,135 @@ svg {
   border-color: #ced4da;
   background-color: #e9ecef;
 }
+
+
+/* --- Highlight Styles (Applied by JS during Search) --- */
+
+/* Generic Dimming */
+.dimmed {
+  opacity: 0.1 !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Generic Highlight (base opacity, transitions) */
+.highlighted {
+  opacity: 1.0 !important;
+  transition: opacity 0.3s ease, stroke 0.3s ease, fill 0.3s ease, stroke-width 0.3s ease;
+}
+.highlighted-neighbor {
+  opacity: 0.9 !important;
+  transition: opacity 0.3s ease, stroke 0.3s ease, fill 0.3s ease, stroke-width 0.3s ease;
+}
+
+
+/* --- HEB Highlighting --- */
+.heb-group .link.highlighted {
+   stroke: #007bff !important;
+   stroke-width: 3px !important;
+   stroke-opacity: 0.9 !important; /* HEB uses stroke-opacity */
+   opacity: 1 !important; /* Ensure link visible */
+}
+.heb-group .link.dimmed {
+    stroke-opacity: 0.05 !important; /* Dim stroke */
+}
+.heb-group .node.highlighted circle {
+   stroke: black !important;
+   stroke-width: 2px !important;
+}
+.heb-group .node.highlighted-neighbor circle {
+   stroke: #17a2b8 !important;
+   stroke-width: 1.5px !important;
+}
+.heb-group .node.highlighted text,
+.heb-group .node.highlighted-neighbor text {
+    fill: black !important;
+    font-weight: bold;
+    stroke: white !important;
+    stroke-width: 2px !important;
+}
+.heb-group .node.highlighted-neighbor text {
+    font-weight: 500;
+}
+
+
+/* --- Matrix Highlighting --- */
+.matrix-group .cell.highlighted {
+    stroke: black !important;
+    stroke-width: 1.5px !important;
+    /* fill is determined by value, opacity set by .highlighted */
+}
+.matrix-group .axis .tick.highlighted text {
+    font-weight: bold;
+    fill: black !important;
+}
+.matrix-group .axis .tick.dimmed { /* Dim tick group */
+     opacity: 0.2 !important;
+}
+
+
+/* --- Arc Diagram Highlighting --- */
+.arc-group .arc-link.highlighted {
+    stroke: #007bff !important;
+    stroke-width: 3px !important;
+    stroke-opacity: 1.0 !important; /* Arc uses stroke-opacity */
+    opacity: 1 !important;
+}
+.arc-group .arc-link.dimmed {
+    stroke-opacity: 0.05 !important;
+}
+.arc-group .arc-node.highlighted circle {
+    fill: #007bff !important;
+    stroke: black !important;
+    stroke-width: 1.5px !important;
+}
+.arc-group .arc-node.highlighted-neighbor circle {
+     fill: #17a2b8 !important;
+     stroke: #333 !important;
+     stroke-width: 1px !important;
+}
+.arc-group .arc-node.highlighted text,
+.arc-group .arc-node.highlighted-neighbor text {
+     fill: black !important;
+     font-weight: bold;
+     opacity: 1 !important;
+}
+
+
+/* --- Sunburst Highlighting --- */
+.sunburst-group path.highlighted {
+    /* opacity: 1.0 !important; (handled by .highlighted) */
+    stroke: black !important;
+    stroke-width: 1.5px !important;
+}
+.sunburst-group path.dimmed {
+    opacity: 0.1 !important; /* Dim fill */
+    /* pointer-events: none; */ /* Optional: disable hover on dimmed */
+}
+
+
+/* --- Bar/Pairs Highlighting --- */
+.bar-group .bar.highlighted,
+.pair-bar-group .bar.highlighted {
+  stroke: black !important;
+  stroke-width: 1.5px !important;
+  fill: #007bff !important; /* Change FILL to primary highlight color */
+}
+.y.axis .tick text.highlighted { /* Target only TEXT */
+   opacity: 1.0 !important;
+   fill: black !important;
+   font-weight: bold !important;
+   stroke: none !important;
+}
+.y.axis .tick.dimmed { /* Dim entire tick group */
+     opacity: 0.2 !important;
+}
+/* Ensure non-dimmed, non-highlighted axis text is reset correctly */
+.y.axis .tick:not(.dimmed) text:not(.highlighted) {
+   opacity: 1.0 !important;
+   fill: #495057 !important; /* Default axis text color */
+   font-weight: normal !important;
+   stroke: none !important;
+}
+
+
+/* --- End of Highlight Styles --- */
