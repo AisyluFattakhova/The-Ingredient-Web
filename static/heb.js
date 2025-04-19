@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Margins for different charts
     const barChartMargin = { top: 30, right: 30, bottom: 120, left: 180 };
     const pairBarChartMargin = { top: 30, right: 30, bottom: 120, left: 200 };
-    const matrixMargin = { top: 120, right: 30, bottom: 120, left: 120 }; // Margins for matrix labels
+    // const matrixMargin = { top: 120, right: 30, bottom: 120, left: 120 }; // Margins for matrix labels
+    // const matrixMargin = { top: 800, right: 800, bottom: 80, left: 100 }; 
+    const matrixMargin = { top: 40, right: 40, bottom: 40, left: 180 };
     const initialHebScale = 0.9; // Initial zoom scale for HEB
     const hebVerticalOffset = 0; // Vertical offset for HEB center
     const MATRIX_TOP_N = 15; // Number of top ingredients for the Adjacency Matrix
@@ -157,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             currentCuisineData = data; // Store fetched data
-            updateTitle(`${cuisineName} - Ingredient Analysis`); // Update dashboard title
+            updateTitle(`${cuisineName} Cousine - Recipes Analysis`); // Update dashboard title
             renderCurrentChart(); // Render the currently selected chart type
 
         } catch (error) {
@@ -610,75 +612,187 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Renders Adjacency Matrix for Top N Ingredients
-    function renderAdjacencyMatrix({ nodes, matrix, maxValue }) {
-        console.log("Rendering Adjacency Matrix...");
-        matrixG.selectAll("*").remove(); // Clear previous matrix elements
+        // Renders Adjacency Matrix for Top N Ingredients
+            // Renders Adjacency Matrix for Top N Ingredients (with Square Cells)
+        // Renders Adjacency Matrix for Top N Ingredients (Allowing Rectangular Cells)
+            // Renders Adjacency Matrix for Top N Ingredients (X-Axis Below)
+        // Renders Adjacency Matrix for Top N Ingredients (X-Axis Below)
+        function renderAdjacencyMatrix({ nodes, matrix, maxValue }) {
+            console.log("Rendering Adjacency Matrix (X-Axis Below)...");
+            matrixG.selectAll("*").remove(); // Clear previous matrix elements
+    
+            if (!nodes?.length || !matrix?.length) {
+                displayInfoMessage("Not enough processed data to render the Adjacency Matrix.");
+                return;
+            }
+    
+            // --- Configuration ---
+            const axisFontSize = "12px";
+            const cellPaddingInner = 0.02;
+            const xAxisTextVerticalOffset = 50; // <<<--- Added: Pixels to shift X-axis text down
+    
+            // --- Scales ---
+             if (matrixWidth <= 0 || matrixHeight <= 0) {
+                 console.error("Matrix dimensions are too small or negative after applying margins.");
+                 displayErrorMessage("Cannot render matrix, calculated size is too small.");
+                 return;
+             }
+    
+            const xScale = d3.scaleBand()
+                .domain(nodes)
+                .range([0, matrixWidth])
+                .paddingInner(cellPaddingInner);
+            const yScale = d3.scaleBand()
+                .domain(nodes)
+                .range([0, matrixHeight])
+                .paddingInner(cellPaddingInner);
+    
+            console.log(`Matrix Cell Size: Width=${xScale.bandwidth().toFixed(2)}px, Height=${yScale.bandwidth().toFixed(2)}px`);
+    
+            const colorScaleMatrix = d3.scaleSequential(d3.interpolateBlues)
+                .domain([0, maxValue > 0 ? maxValue : 1]);
+    
+            // --- Axes ---
+            const xAxis = d3.axisBottom(xScale).tickSize(0);
+            const yAxis = d3.axisLeft(yScale).tickSize(0);
+    
+            // --- Draw Axes ---
+    
+            // Draw X Axis Group (Positioned at the bottom of the cell area)
+            matrixG.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0, ${matrixHeight})`) // Position axis group at bottom edge of matrix cells
+                .call(xAxis)
+                .selectAll("text")
+                    .style("text-anchor", "start")
+                    .attr("dx", ".8em")
+                    .attr("dy", ".15em") // Keep small dy for baseline alignment relative to tick
+                    // ***MODIFICATION HERE***
+                    // Apply the rotation AND the additional vertical shift
+                    .attr("transform", `rotate(45) translate(0, ${xAxisTextVerticalOffset})`)
+                    // Explanation:
+                    // 1. `rotate(45)`: Rotates the text 45 degrees around its anchor point.
+                    // 2. `translate(0, xAxisTextVerticalOffset)`: AFTER rotation, shifts the text down
+                    //    along the new (rotated) y-axis. This effectively moves it further away
+                    //    from the original axis line position.
+                    .style("font-size", axisFontSize);
+    
+            // Draw Y Axis Group (Positioned at the left)
+            matrixG.append("g")
+                .attr("class", "y axis")
+                .call(yAxis)
+                .selectAll("text")
+                    .style("font-size", axisFontSize);
+    
+            // Remove axis lines
+            matrixG.selectAll(".axis").select(".domain").remove();
+    
+            // --- Draw Cells ---
+            const cellsData = matrix.flat().filter(d => d.z > 0);
+            const cells = matrixG.selectAll(".matrix-cell")
+                .data(cellsData, d => `${d.source}-${d.target}`)
+                .enter().append("rect")
+                .attr("class", "matrix-cell")
+                .attr("x", d => xScale(d.target))
+                .attr("y", d => yScale(d.source))
+                .attr("width", xScale.bandwidth())
+                .attr("height", yScale.bandwidth())
+                .style("fill", d => colorScaleMatrix(d.z))
+                .style("opacity", 0);
+    
+            // Tooltips
+            cells.append("title")
+                 .text(d => `${d.source} & ${d.target}: ${d.z.toLocaleString()}`);
+    
+            // Fade in
+            cells.transition().duration(750)
+                 .style("opacity", 1);
+    
+            // Interactivity
+            setupMatrixInteractivity(cells);
+    
+            console.log(`Rectangular Adjacency Matrix rendered with ${nodes.length} nodes.`);
+        } // --- End renderAdjacencyMatrix ---
 
-        // Check for valid data (nodes array and matrix grid)
-        if (!nodes?.length || !matrix?.length) {
-            displayInfoMessage("Not enough processed data to render the Adjacency Matrix.");
-            return;
+    // Keep the existing setupMatrixInteractivity function
+    // function setupMatrixInteractivity(cellSelection) { ... }
+
+    // --- Interactivity & Highlighting ---
+    // ... (setupMatrixInteractivity might need slight adjustment)
+
+    // Setup hover interactions for Adjacency Matrix cells and axes
+    function setupMatrixInteractivity(cellSelection) { // cellSelection is now within squareMatrixGroup
+         console.log("Setting up Matrix Interactivity...");
+         // IMPORTANT: Select axis ticks relative to the main matrixG, not squareMatrixGroup,
+         // because the axis elements were appended *directly* to matrixG before squareMatrixGroup existed
+         // *Correction*: Axes are now appended to squareMatrixGroup, so selections should be relative to matrixG or specifically target within the square group. Let's keep it simple and select globally within matrixG for axes.
+
+        if (!cellSelection || cellSelection.empty()) {
+            console.warn("setupMatrixInteractivity: Invalid or empty cell selection."); return;
         }
 
-        // Scales
-        const xScale = d3.scaleBand() // Band scale for discrete nodes on X axis
-            .domain(nodes) // Domain is the sorted list of top ingredient names
-            .range([0, matrixWidth])
-            .paddingInner(0.05); // Padding between cells
-        const yScale = d3.scaleBand() // Band scale for discrete nodes on Y axis
-            .domain(nodes) // Same domain as X axis
-            .range([0, matrixHeight])
-            .paddingInner(0.05);
+        // Select all relevant elements globally within matrixG for simplicity
+        const allCells = matrixG.selectAll(".matrix-cell"); // Cells are inside squareMatrixGroup, but reachable
+        const allXAxisTicks = matrixG.selectAll(".x.axis .tick");
+        const allYAxisTicks = matrixG.selectAll(".y.axis .tick");
 
-        // Color scale for cell values (co-occurrence strength)
-        const colorScaleMatrix = d3.scaleSequential(d3.interpolateBlues) // Blue gradient
-            .domain([0, maxValue > 0 ? maxValue : 1]); // Domain from 0 to max value found
+        // --- Cell hover ---
+        cellSelection // Use the passed selection (already filtered for valid cells)
+            .on("mouseover.matrix", function(event, d) { // d is cell data {x,y,z,source,target}
+                allCells.style("opacity", 0.3);
+                allXAxisTicks.style("opacity", 0.3);
+                allYAxisTicks.style("opacity", 0.3);
 
-        // Axes
-        const xAxis = d3.axisTop(xScale).tickSize(0); // X axis on top, no tick lines
-        const yAxis = d3.axisLeft(yScale).tickSize(0); // Y axis on left, no tick lines
+                d3.select(this).style("opacity", 1).raise(); // Highlight this specific cell
 
-        // Draw Axes and style labels
-        matrixG.append("g").attr("class", "x axis")
-            .call(xAxis)
-            .selectAll("text")
-                .style("text-anchor", "start") // Anchor rotated labels
-                .attr("dx", ".8em").attr("dy", ".15em")
-                .attr("transform", "rotate(-65)"); // Rotate X labels for readability
+                allXAxisTicks.filter(nodeName => nodeName === d.target)
+                             .style("opacity", 1).select("text").style("font-weight", "bold");
+                allYAxisTicks.filter(nodeName => nodeName === d.source)
+                             .style("opacity", 1).select("text").style("font-weight", "bold");
 
-        matrixG.append("g").attr("class", "y axis")
-            .call(yAxis);
+                 allCells.filter(cellData => cellData.source === d.source || cellData.target === d.target)
+                         .style("opacity", 0.7); // Partially highlight row/column
+                 d3.select(this).style("opacity", 1); // Ensure hovered cell stays fully opaque
+            })
+            .on("mouseout.matrix", function() {
+                allCells.style("opacity", 1);
+                allXAxisTicks.style("opacity", 1).select("text").style("font-weight", "normal");
+                allYAxisTicks.style("opacity", 1).select("text").style("font-weight", "normal");
+            });
 
-        // Remove the actual axis lines if desired
-        matrixG.selectAll(".axis").select(".domain").remove();
+        // --- Y-Axis Tick hover ---
+         allYAxisTicks.on("mouseover.matrix", function(event, d_row) { // d_row is the ingredient name
+             allCells.style("opacity", 0.3); allXAxisTicks.style("opacity", 0.3); allYAxisTicks.style("opacity", 0.3);
 
-        // Draw Cells (Rectangles)
-        // Flatten the matrix grid and filter out cells with zero value for efficiency
-        const cellsData = matrix.flat().filter(d => d.z > 0);
+             d3.select(this).style("opacity", 1).select("text").style("font-weight", "bold");
 
-        const cells = matrixG.selectAll(".matrix-cell")
-            .data(cellsData, d => `${d.source}-${d.target}`) // Use unique key for object constancy
-            .enter().append("rect")
-            .attr("class", "matrix-cell")
-            .attr("x", d => xScale(d.target)) // X position based on target ingredient
-            .attr("y", d => yScale(d.source)) // Y position based on source ingredient
-            .attr("width", xScale.bandwidth()) // Width determined by band scale
-            .attr("height", yScale.bandwidth()) // Height determined by band scale
-            .style("fill", d => colorScaleMatrix(d.z)) // Fill color based on value
-            .style("opacity", 0); // Start transparent for fade-in effect
+             const targetNodes = new Set();
+             allCells.filter(cellData => cellData.source === d_row) // Highlight row cells
+                     .style("opacity", 1)
+                     .each(cd => { if (cd.z > 0) targetNodes.add(cd.target); }); // Collect targets in this row
 
-        // Add tooltips to cells
-        cells.append("title")
-             .text(d => `${d.source} & ${d.target}: ${d.z.toLocaleString()}`);
+              allXAxisTicks.filter(nodeName => targetNodes.has(nodeName)).style("opacity", 1); // Highlight target ticks
+         }).on("mouseout.matrix", function() {
+             allCells.style("opacity", 1); allXAxisTicks.style("opacity", 1).select("text").style("font-weight", "normal"); allYAxisTicks.style("opacity", 1).select("text").style("font-weight", "normal");
+         });
 
-        // Fade in cells
-        cells.transition().duration(750)
-             .style("opacity", 1);
+        // --- X-Axis Tick hover ---
+        allXAxisTicks.on("mouseover.matrix", function(event, d_col) { // d_col is the ingredient name
+             allCells.style("opacity", 0.3); allXAxisTicks.style("opacity", 0.3); allYAxisTicks.style("opacity", 0.3);
 
-        // Setup hover interactions for the matrix
-        setupMatrixInteractivity(cells);
+             d3.select(this).style("opacity", 1).select("text").style("font-weight", "bold");
 
-        console.log(`Adjacency Matrix rendered with ${nodes.length} nodes.`);
+             const sourceNodes = new Set();
+             allCells.filter(cellData => cellData.target === d_col) // Highlight column cells
+                     .style("opacity", 1)
+                     .each(cd => { if (cd.z > 0) sourceNodes.add(cd.source); }); // Collect sources in this column
+
+              allYAxisTicks.filter(nodeName => sourceNodes.has(nodeName)).style("opacity", 1); // Highlight source ticks
+         }).on("mouseout.matrix", function() {
+             allCells.style("opacity", 1); allXAxisTicks.style("opacity", 1).select("text").style("font-weight", "normal"); allYAxisTicks.style("opacity", 1).select("text").style("font-weight", "normal");
+         });
+
+         console.log("Matrix Interactivity setup complete.");
     }
 
 

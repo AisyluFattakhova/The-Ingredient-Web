@@ -158,53 +158,6 @@ body.heb-active #heb-controls button { display: inline-block; }
 }
 
 
-/* --- Arc Diagram Styles --- */
-.arc-group .arc-link {
-  fill: none;
-  stroke-opacity: 0.6;
-  stroke-width: 1.5px;
-  transition: stroke 0.2s ease, stroke-width 0.2s ease, stroke-opacity 0.2s ease;
-}
-.arc-group .arc-node circle {
-  fill: #999;
-  stroke: white;
-  stroke-width: 1px;
-  transition: fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
-}
-.arc-group .arc-node text {
-  font-size: 10px;
-  text-anchor: middle;
-  transform: rotate(-65deg);
-  dy: -8px;
-  pointer-events: none;
-  transition: fill 0.2s ease, opacity 0.2s ease;
-}
-
-/* --- Sunburst Styles --- */
-.sunburst-group path {
-  stroke: #fff; /* White lines between segments */
-  stroke-width: 0.5px;
-  cursor: pointer; /* Indicate interactivity */
-  transition: opacity 0.3s ease, fill 0.3s ease, stroke 0.3s ease, stroke-width 0.3s ease; /* Added stroke transitions */
-}
-.sunburst-group path:hover {
-  opacity: 0.85; /* Slight fade on hover */
-}
-/* Style for text label in the center (optional) */
-.sunburst-label {
-    text-anchor: middle;
-    font-size: 1.1em;
-    fill: #555;
-    pointer-events: none; /* Don't block path interaction */
-    opacity: 0; /* Controlled by JS */
-    transition: opacity 0.3s ease;
-}
-.sunburst-label-value {
-    font-weight: bold;
-    font-size: 1.3em;
-}
-
-
 /* --- Bar Chart / Pairs Bar Chart Specific Styles --- */
 .bar-group .bar,
 .pair-bar-group .bar {
