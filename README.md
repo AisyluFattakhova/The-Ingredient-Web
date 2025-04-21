@@ -135,8 +135,8 @@ The project is deployed on Render: [link](https://the-ingredient-web-k6lv.onrend
 |-------|--------|-------|
 Data Collection | ✅ | Scrape and clean recipe ingredient data
 Visualization | ✅ | Implement edge bundling and charts
-UI Polish | 🟡 | Add filters, search, and responsive design
-Interactivity | 🟠 | Improve user engagement and highlight features
+UI Polish | ✅ | Add filters, search, and responsive design
+Interactivity | ✅ | Improve user engagement and highlight features
 
 ---
 
