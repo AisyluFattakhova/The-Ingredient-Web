@@ -67,9 +67,33 @@
 ## 📊 Exploratory Data Analysis
 
 ![output](https://github.com/user-attachments/assets/9d8c16fe-7986-477b-b9d3-9f9109b3f210)
+
 ![image](https://github.com/user-attachments/assets/97e8b684-1bc7-48f1-bfc1-27955c3d8827)
 ![image](https://github.com/user-attachments/assets/0eab79cd-e29e-4130-ac61-5e80f8504dde)
+Top 20 Most Common Ingredients Overall:
+- ingredients
+- salt               1295
+- sugar              1157
+- water               839
+- garlic              763
+- onion               730
+- butter              691
+- egg                 630
+- flour               618
+- oil                 581
+- pepper              503
+- olive oil           440
+- milk                331
+- tomato              254
+- vanilla extract     230
+- cinnamon            207
+- cayenne pepper      206
+- soy sauce           205
+- cumin               194
+- baking powder       183
+- lemon juice         176
 ![image](https://github.com/user-attachments/assets/449c6cb2-5146-4c94-9b9c-fb4c4bd4d402)
+#### Ingredient Co-occurrence Analysis
 ![image](https://github.com/user-attachments/assets/e3019d30-aeec-4987-b6bd-6641dcfb4d0d)
 
 ### EDA Summary 
