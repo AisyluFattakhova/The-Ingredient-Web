@@ -82,6 +82,9 @@ docker-compose up --build
 
 4. Access the app at: [http://localhost:5000](http://172.18.0.2:5000/)
 
+### Website
+The project is deployed on Render: [link](https://the-ingredient-web-k6lv.onrender.com/)
+
 ---
 
 ## 🗺️ Roadmap
