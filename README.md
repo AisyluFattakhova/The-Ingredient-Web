@@ -5,7 +5,8 @@
 ## 📌 Table of Contents  
 - 🚀 [Project Overview](#-project-overview)  
 - 🛠️ [Used Technologies](#%EF%B8%8F-used-technologies)  
-- 🔍 [Data Collection](#-data-collection) 
+- 🔍 [Data Collection](#-data-collection)
+- 📊 [Exploratory Data Analysis](#-exploratory-data-analysis) 
 - ⚡ [Deployment](#-deployment)  
 - 🗺️ [Roadmap](#%EF%B8%8F-roadmap)   
 - 👥 [Authors](#-authors)  
@@ -62,6 +63,23 @@
   - Cuisine type classification
 
 ---
+
+## 📊 Exploratory Data Analysis
+
+![output](https://github.com/user-attachments/assets/9d8c16fe-7986-477b-b9d3-9f9109b3f210)
+![image](https://github.com/user-attachments/assets/97e8b684-1bc7-48f1-bfc1-27955c3d8827)
+![image](https://github.com/user-attachments/assets/0eab79cd-e29e-4130-ac61-5e80f8504dde)
+![image](https://github.com/user-attachments/assets/449c6cb2-5146-4c94-9b9c-fb4c4bd4d402)
+![image](https://github.com/user-attachments/assets/e3019d30-aeec-4987-b6bd-6641dcfb4d0d)
+
+### EDA Summary 
+- The dataset contains 2331 recipes across 49 cuisines.
+- Cuisine distribution is uneven, with 'Canadian' being the most frequent (67 recipes) and 'Belgian' the least (6 recipes).
+- Recipes typically contain between 7 and 13 ingredients (IQR), with a median of 10.
+- The most common ingredients overall are: salt, sugar, water, garlic, onion.
+- Co-occurrence heatmap highlights common ingredient pairings across all recipes (e.g., salt & pepper, flour & sugar).
+---
+
 
 ## ⚡ Deployment
 
